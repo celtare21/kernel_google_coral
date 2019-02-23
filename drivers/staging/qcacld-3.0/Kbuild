@@ -23,7 +23,14 @@ CONFIG_QCA_CLD_WLAN_PROFILE ?= default
 # Force user build
 TARGET_BUILD_VARIANT := user
 
-include $(WLAN_ROOT)/configs/$(CONFIG_QCA_CLD_WLAN_PROFILE)_defconfig
+include $(WLAN_ROOT)/configs/$(patsubst "%",%,$(CONFIG_QCA_CLD_WLAN_PROFILE))_defconfig
+
+ifeq ($(KERNEL_BUILD), n)
+ifneq ($(ANDROID_BUILD_TOP),)
+      override WLAN_ROOT := $(ANDROID_BUILD_TOP)/$(WLAN_ROOT)
+      override WLAN_COMMON_INC := $(ANDROID_BUILD_TOP)/$(WLAN_COMMON_INC)
+endif
+endif
 
 ############ UAPI ############
 UAPI_DIR :=	uapi
