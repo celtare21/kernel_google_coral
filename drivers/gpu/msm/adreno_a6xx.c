@@ -1446,6 +1446,9 @@ static int64_t a6xx_read_throttling_counters(struct adreno_device *adreno_dev)
 	uint32_t counts[ADRENO_GPMU_THROTTLE_COUNTERS];
 	struct adreno_busy_data *busy = &adreno_dev->busy_data;
 
+	if (!gmu_core_isenabled(device))
+		return 0;
+
 	for (i = 0; i < ARRAY_SIZE(counts); i++) {
 		if (!adreno_dev->gpmu_throttle_counters[i])
 			counts[i] = 0;
