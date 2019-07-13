@@ -49,6 +49,10 @@
 #define CAM_HYP        (1 << 26)
 #define STR_BUFFER_MAX_LENGTH  1024
 
+/* Enable debug logging from camera */
+#define CAM_DEBUG_LOGGING 0
+
+#if CAM_DEBUG_LOGGING
 /*
  *  cam_debug_log()
  *
@@ -64,6 +68,7 @@
  */
 void cam_debug_log(unsigned int module_id, const char *func, const int line,
 	const char *fmt, ...);
+#endif /* CAM_DEBUG_LOGGING */
 
 /*
  * cam_get_module_name()
@@ -85,6 +90,8 @@ const char *cam_get_module_name(unsigned int module_id);
 #define CAM_ERR(__module, fmt, args...)                            \
 	pr_debug("CAM_ERR: %s: %s: %d " fmt "\n",                     \
 		cam_get_module_name(__module), __func__,  __LINE__, ##args)
+
+#if CAM_DEBUG_LOGGING
 /*
  * CAM_WARN
  * @brief    :  This Macro will print warning logs
@@ -181,4 +188,13 @@ const char *cam_get_module_name(unsigned int module_id);
 				__LINE__, ##args);			\
 	})
 
+#else /* CAM_DEBUG_LOGGING */
+#define CAM_WARN
+#define CAM_INFO
+#define CAM_INFO_RATE_LIMIT
+#define CAM_INFO_RATE_LIMIT_CUSTOM
+#define CAM_DBG
+#define CAM_ERR_RATE_LIMIT
+#define CAM_ERR_RATE_LIMIT_CUSTOM
+#endif /* CAM_DEBUG_LOGGING */
 #endif /* _CAM_DEBUG_UTIL_H_ */
