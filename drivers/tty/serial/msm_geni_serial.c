@@ -21,6 +21,7 @@
 #include <linux/delay.h>
 #include <linux/console.h>
 #include <linux/io.h>
+#include <linux/irq.h>
 #include <linux/ipc_logging.h>
 #include <linux/module.h>
 #include <linux/of.h>
@@ -1984,7 +1985,7 @@ static void msm_geni_serial_shutdown(struct uart_port *uport)
 		msm_geni_serial_stop_tx(uport);
 	}
 
-	free_irq(uport->irq, uport);
+	disable_irq(uport->irq);
 	spin_lock_irqsave(&uport->lock, flags);
 	msm_geni_serial_stop_tx(uport);
 	msm_geni_serial_stop_rx(uport);
@@ -2100,8 +2101,6 @@ static int msm_geni_serial_startup(struct uart_port *uport)
 	struct msm_geni_serial_port *msm_port = GET_DEV_PORT(uport);
 
 	IPC_LOG_MSG(msm_port->ipc_log_misc, "%s:\n", __func__);
-	scnprintf(msm_port->name, sizeof(msm_port->name), "msm_serial_geni%d",
-				uport->line);
 
 	msm_port->startup_in_progress = true;
 
@@ -2130,13 +2129,7 @@ static int msm_geni_serial_startup(struct uart_port *uport)
 	 * before returning to the framework.
 	 */
 	mb();
-	ret = request_irq(uport->irq, msm_geni_serial_isr, IRQF_TRIGGER_HIGH,
-			msm_port->name, uport);
-	if (unlikely(ret)) {
-		dev_err(uport->dev, "%s: Failed to get IRQ ret %d\n",
-							__func__, ret);
-		goto exit_startup;
-	}
+	enable_irq(uport->irq);
 
 	if (msm_port->wakeup_irq > 0) {
 		ret = request_irq(msm_port->wakeup_irq, msm_geni_wakeup_isr,
@@ -3012,6 +3005,9 @@ static int msm_geni_serial_probe(struct platform_device *pdev)
 	uport->fifosize =
 		((dev_port->tx_fifo_depth * dev_port->tx_fifo_width) >> 3);
 
+	scnprintf(dev_port->name, sizeof(dev_port->name), "msm_serial_geni%d",
+				uport->line);
+
 	irq = platform_get_irq(pdev, 0);
 	if (irq < 0) {
 		ret = irq;
@@ -3019,6 +3015,15 @@ static int msm_geni_serial_probe(struct platform_device *pdev)
 		goto exit_geni_serial_probe;
 	}
 	uport->irq = irq;
+
+	irq_set_status_flags(uport->irq, IRQ_NOAUTOEN);
+	ret = devm_request_irq(uport->dev, uport->irq, msm_geni_serial_isr,
+			IRQF_TRIGGER_HIGH, dev_port->name, uport);
+	if (ret) {
+		dev_err(uport->dev, "Failed to get IRQ ret %d\n", ret);
+		goto exit_geni_serial_probe;
+	}
+
 
 	uport->private_data = (void *)drv;
 	platform_set_drvdata(pdev, dev_port);
