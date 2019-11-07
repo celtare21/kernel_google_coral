@@ -865,6 +865,7 @@ extern void ufshcd_complete_lrb(struct ufs_hba *hba, struct ufshcd_lrb *lrbp);
  * @intr_mask: Interrupt Mask Bits
  * @ee_ctrl_mask: Exception event control mask
  * @is_powered: flag to check if HBA is powered
+ * @recovery_wq: Work queue for all recovery workers
  * @eh_work: Worker to handle UFS errors that require s/w attention
  * @eeh_work: Worker to handle exception events
  * @errors: HBA errors
@@ -1041,6 +1042,7 @@ struct ufs_hba {
 	bool is_powered;
 
 	/* Work Queues */
+	struct workqueue_struct *recovery_wq;
 	struct work_struct eh_work;
 	struct work_struct eeh_work;
 	struct work_struct rls_work;
