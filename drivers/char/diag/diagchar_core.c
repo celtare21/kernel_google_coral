@@ -3895,7 +3895,7 @@ void diag_ws_on_notify(void)
 	 * Do not deal with reference count here as there can be spurious
 	 * interrupts.
 	 */
-	pm_stay_awake(driver->diag_dev);
+	// pm_stay_awake(driver->diag_dev);
 }
 
 void diag_ws_on_read(int type, int pkt_len)
