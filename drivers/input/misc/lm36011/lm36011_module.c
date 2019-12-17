@@ -420,7 +420,7 @@ static void sx9320_crack_detection(struct led_laser_ctrl_t *ctrl)
 	}
 
 	if (gpio_level && !is_sw_halt_required) {
-		dev_info(ctrl->soc_info.dev,
+		dev_dbg(ctrl->soc_info.dev,
 			"flood and dot crack are solved, release sw halt now");
 		gpio_set_value(
 			ctrl->silego.gpio_array[SILEGO_SW_HALT_ITOC].gpio, 0);
@@ -428,7 +428,7 @@ static void sx9320_crack_detection(struct led_laser_ctrl_t *ctrl)
 	}
 
 	if (crack_log_en) {
-		dev_info(ctrl->soc_info.dev,
+		dev_dbg(ctrl->soc_info.dev,
 			"flood C_raw %d aF C_corrected: %d aF "
 			"Cap_bias: %d aF temp: %d mC is crack: %d",
 			ctrl->cap_sense.cap_raw[PHASE2],
@@ -436,7 +436,7 @@ static void sx9320_crack_detection(struct led_laser_ctrl_t *ctrl)
 			ctrl->cap_sense.cap_bias[PHASE2],
 			ctrl->cap_sense.proxavg[PHASE3] * 1000 / 57,
 			ctrl->cap_sense.is_crack_detected[LASER_FLOOD]);
-		dev_info(ctrl->soc_info.dev,
+		dev_dbg(ctrl->soc_info.dev,
 			"dot C_raw %d aF C_corrected: %d aF "
 			"Cap_bias: %d aF temp: %d mC is crack: %d",
 			ctrl->cap_sense.cap_raw[PHASE1],
@@ -856,7 +856,7 @@ static int lm36011_power_up(struct led_laser_ctrl_t *ctrl)
 				"set silego vdd voltage failed: %d", rc);
 			return rc;
 		}
-		dev_info(ctrl->soc_info.dev, "updated ldo6 to 3.2V");
+		dev_dbg(ctrl->soc_info.dev, "updated ldo6 to 3.2V");
 	}
 
 	rc = silego_verify_settings(ctrl);
@@ -1114,9 +1114,9 @@ static void cap_sense_workq_job(struct work_struct *work)
 		ctrl->cap_sense.proxoffset[i] = data & 0x3FFF;
 
 		if (read_proxoffset) {
-			dev_info(ctrl->soc_info.dev, "proxoffset PH%d: %d",
+			dev_dbg(ctrl->soc_info.dev, "proxoffset PH%d: %d",
 					i, ctrl->cap_sense.proxoffset[i]);
-			dev_info(ctrl->soc_info.dev, "proxavg PH%d: %d",
+			dev_dbg(ctrl->soc_info.dev, "proxavg PH%d: %d",
 					i, ctrl->cap_sense.proxavg[i]);
 		}
 	}
@@ -1198,7 +1198,7 @@ static void lm36011_enable_gpio_irq(struct device *dev)
 
 	for (index = 0; index < silego_num; index++) {
 		if (ctrl->silego.irq[index] <= 0) {
-			dev_warn(dev, "no available irq for gpio: %d",
+			dev_dbg(dev, "no available irq for gpio: %d",
 				ctrl->silego.gpio_array[index].gpio);
 		} else if (index == SILEGO_SW_HALT_ITOC) {
 			gpio_request(ctrl->silego.gpio_array[index].gpio,
@@ -1211,7 +1211,7 @@ static void lm36011_enable_gpio_irq(struct device *dev)
 	if (ctrl->hw_version < BUILD_DVT) {
 		for (index = 0; index < CAP_SENSE_GPIO_MAX; index++) {
 			if (ctrl->cap_sense.irq[index] <= 0) {
-				dev_warn(dev, "no available irq for gpio: %d",
+				dev_dbg(dev, "no available irq for gpio: %d",
 					ctrl->cap_sense.irq[index]);
 			} else
 				lm36011_set_up_cap_sense_irq(
@@ -1231,7 +1231,7 @@ static void lm36011_disable_gpio_irq(struct device *dev)
 	if (ctrl->hw_version < BUILD_DVT) {
 		for (index = 0; index < SILEGO_GPIO_MAX_ITOC; index++) {
 			if (ctrl->silego.irq[index] <= 0) {
-				dev_warn(dev,
+				dev_dbg(dev,
 					"no available irq for gpio: %d",
 					ctrl->silego.gpio_array[index].gpio);
 			} else if (index == SILEGO_SW_HALT_ITOC) {
@@ -1249,7 +1249,7 @@ static void lm36011_disable_gpio_irq(struct device *dev)
 
 		for (index = 0; index < CAP_SENSE_GPIO_MAX; index++) {
 			if (ctrl->cap_sense.irq[index] <= 0) {
-				dev_warn(dev,
+				dev_dbg(dev,
 					"no available irq for gpio: %d",
 					ctrl->cap_sense.irq[index]);
 			} else
@@ -1258,7 +1258,7 @@ static void lm36011_disable_gpio_irq(struct device *dev)
 	} else {
 		for (index = 0; index < SILEGO_GPIO_MAX_ITOR; index++) {
 			if (ctrl->silego.irq[index] <= 0) {
-				dev_warn(dev,
+				dev_dbg(dev,
 					"no available irq for gpio: %d",
 					ctrl->silego.gpio_array[index].gpio);
 			} else
@@ -1378,11 +1378,11 @@ static int lm36011_parse_dt(struct device *dev)
 	ctrl->type = value;
 
 	if (of_property_read_u32(dev->of_node, "hw-version", &value)) {
-		dev_warn(dev, "hw version not specified in dt");
+		dev_dbg(dev, "hw version not specified in dt");
 		ctrl->hw_version = 0;
 	} else {
 		ctrl->hw_version = value;
-		dev_info(dev, "hw version: %d", ctrl->hw_version);
+		dev_dbg(dev, "hw version: %d", ctrl->hw_version);
 	}
 
 	if (lm36011_get_gpio_info(dev)) {
@@ -1543,7 +1543,7 @@ static ssize_t led_laser_enable_store(struct device *dev,
 					sx9320_crack_detection(ctrl);
 			}
 			lm36011_enable_gpio_irq(dev);
-			dev_info(ctrl->soc_info.dev,
+			dev_dbg(ctrl->soc_info.dev,
 				"enable safety ic funciton, safety_ic_owner %d",
 				safety_ic_owner);
 		}
@@ -1557,11 +1557,11 @@ static ssize_t led_laser_enable_store(struct device *dev,
 				dev_err(ctrl->soc_info.dev,
 					"failed to get Silego state");
 			else if (ctrl->silego.fault_flag == ITOR_OPEN_CIRCUIT) {
-				dev_info(ctrl->soc_info.dev,
+				dev_dbg(ctrl->soc_info.dev,
 					"ITO-R detected crack");
 				cam_req_mgr_update_safety_ic_status(LENS_CRACK);
 			}
-			dev_info(ctrl->soc_info.dev, "Silego state: 0x%x",
+			dev_dbg(ctrl->soc_info.dev, "Silego state: 0x%x",
 				ctrl->silego.fault_flag);
 		}
 		/* Clean up IRQ for PROTO and DEV device */
@@ -1571,20 +1571,20 @@ static ssize_t led_laser_enable_store(struct device *dev,
 		rc = lm36011_write_data(ctrl,
 			ENABLE_REG, IR_ENABLE_MODE);
 		if (rc == 0)
-			dev_info(dev, "Laser enabled");
+			dev_dbg(dev, "Laser enabled");
 	} else {
 		mutex_lock(&lm36011_mutex);
 		if (ctrl->type == safety_ic_owner) {
 			lm36011_disable_gpio_irq(dev);
 			cam_req_mgr_update_safety_ic_status(NO_ERROR);
-			dev_info(ctrl->soc_info.dev,
+			dev_dbg(ctrl->soc_info.dev,
 				"disable safety ic function, safety_ic_owner: %d",
 				safety_ic_owner);
 		}
 		mutex_unlock(&lm36011_mutex);
 		rc = lm36011_power_down(ctrl);
 		if (rc == 0)
-			dev_info(dev, "Laser disabled");
+			dev_dbg(dev, "Laser disabled");
 	}
 	ctrl->silego.vcsel_fault_count = 0;
 	ctrl->silego.is_vcsel_fault = false;
@@ -1763,7 +1763,7 @@ static ssize_t cap_sense_proxvalue_show(struct device *dev,
 	struct led_laser_ctrl_t *ctrl = dev_get_drvdata(dev);
 
 	if (!ctrl->cap_sense.is_power_up || !ctrl->is_power_up) {
-		dev_warn(dev, "try to enable laser first");
+		dev_dbg(dev, "try to enable laser first");
 		return -EINVAL;
 	}
 
@@ -1790,7 +1790,7 @@ static ssize_t cap_sense_write_byte_store(struct device *dev,
 	int rc;
 
 	if (!ctrl->cap_sense.is_power_up || !ctrl->cap_sense.is_cci_init) {
-		dev_warn(dev, "try to enable laser first");
+		dev_dbg(dev, "try to enable laser first");
 		return -EINVAL;
 	}
 
@@ -1834,7 +1834,7 @@ static ssize_t itoc_cali_data_store_store(struct device *dev,
 		ctrl->cap_sense.calibration_data[PHASE1] = (value >> 16);
 		ctrl->cap_sense.calibration_data[PHASE2] =
 			(value & 0x0000FFFF);
-		dev_info(dev,
+		dev_dbg(dev,
 			"updated ITO-C calibration data, dot: %d flood: %d",
 			ctrl->cap_sense.calibration_data[PHASE1],
 			ctrl->cap_sense.calibration_data[PHASE2]);
@@ -1844,7 +1844,7 @@ static ssize_t itoc_cali_data_store_store(struct device *dev,
 		if (rc < 0)
 			return rc;
 		ctrl->cap_sense.cap_bias[PHASE1] = temp_value;
-		dev_info(dev, "updated dot bias: %d",
+		dev_dbg(dev, "updated dot bias: %d",
 			ctrl->cap_sense.cap_bias[PHASE1]);
 		break;
 	case 'c':
@@ -1852,13 +1852,13 @@ static ssize_t itoc_cali_data_store_store(struct device *dev,
 		if (rc < 0)
 			return rc;
 		ctrl->cap_sense.cap_slope[PHASE1] = temp_value;
-		dev_info(dev, "updated dot slope: %d",
+		dev_dbg(dev, "updated dot slope: %d",
 			ctrl->cap_sense.cap_slope[PHASE1]);
 		if (ctrl->cap_sense.cap_slope[PHASE1] > 0) {
 			ctrl->cap_sense.max_supported_temp[PHASE1] =
 				((0xFFFFFFFF) /
 				ctrl->cap_sense.cap_slope[PHASE1]);
-			dev_info(dev,
+			dev_dbg(dev,
 				"max supported temperature for dot: %d mC",
 				ctrl->cap_sense.max_supported_temp[PHASE1]);
 		}
@@ -1868,7 +1868,7 @@ static ssize_t itoc_cali_data_store_store(struct device *dev,
 		if (rc < 0)
 			return rc;
 		ctrl->cap_sense.cap_bias[PHASE2] = temp_value;
-		dev_info(dev, "updated flood bias: %d",
+		dev_dbg(dev, "updated flood bias: %d",
 			ctrl->cap_sense.cap_bias[PHASE2]);
 		break;
 	case 'e':
@@ -1876,13 +1876,13 @@ static ssize_t itoc_cali_data_store_store(struct device *dev,
 		if (rc < 0)
 			return rc;
 		ctrl->cap_sense.cap_slope[PHASE2] = temp_value;
-		dev_info(dev, "updated flood slope: %d",
+		dev_dbg(dev, "updated flood slope: %d",
 			ctrl->cap_sense.cap_slope[PHASE2]);
 		if (ctrl->cap_sense.cap_slope[PHASE2] > 0) {
 			ctrl->cap_sense.max_supported_temp[PHASE2] =
 				((0xFFFFFFFF) /
 				ctrl->cap_sense.cap_slope[PHASE2]);
-			dev_info(dev,
+			dev_dbg(dev,
 				"max supported temperature for flood: %d mC",
 				ctrl->cap_sense.max_supported_temp[PHASE2]);
 		}
@@ -1925,7 +1925,7 @@ static void silego_self_test(
 	mutex_lock(&lm36011_mutex);
 	if (ctrl->type == safety_ic_owner) {
 		lm36011_enable_gpio_irq(ctrl->soc_info.dev);
-		dev_info(ctrl->soc_info.dev,
+		dev_dbg(ctrl->soc_info.dev,
 			"enable safety ic funciton, safety_ic_owner %d",
 			safety_ic_owner);
 	}
@@ -1955,10 +1955,10 @@ static void silego_self_test(
 	}
 
 	if (lm36011_read_data(ctrl, ENABLE_REG, &data) < 0)
-		dev_warn(ctrl->soc_info.dev, "fail to read back reg 0x%x",
+		dev_dbg(ctrl->soc_info.dev, "fail to read back reg 0x%x",
 			ENABLE_REG);
 	else
-		dev_info(ctrl->soc_info.dev,
+		dev_dbg(ctrl->soc_info.dev,
 			"laser driver mode has been set to 0x%x", data);
 
 	/* check ITO-R status */
@@ -1992,7 +1992,7 @@ release_resource:
 	mutex_lock(&lm36011_mutex);
 	if (ctrl->type == safety_ic_owner) {
 		lm36011_disable_gpio_irq(ctrl->soc_info.dev);
-		dev_info(ctrl->soc_info.dev,
+		dev_dbg(ctrl->soc_info.dev,
 			"disable safety ic function, safety_ic_owner: %d",
 			safety_ic_owner);
 	}
@@ -2109,7 +2109,7 @@ static long lm36011_ioctl(struct file *file, unsigned int cmd,
 		break;
 	case LM36011_SILEGO_SELF_TEST:
 		silego_self_test(ctrl, &test_result);
-		dev_info(ctrl->soc_info.dev,
+		dev_dbg(ctrl->soc_info.dev,
 			"silego self test result: %d",
 			test_result.result);
 		if (test_result.result != SILEGO_TEST_BYPASS)
@@ -2146,7 +2146,7 @@ static int32_t lm36011_driver_platform_probe(
 
 	if (cam_cci_get_subdev(CCI_DEVICE_0) == NULL ||
 		cam_cci_get_subdev(CCI_DEVICE_1) == NULL) {
-		dev_warn(&pdev->dev, "wait for cci driver probe");
+		dev_dbg(&pdev->dev, "wait for cci driver probe");
 		return -EPROBE_DEFER;
 	}
 
@@ -2293,7 +2293,7 @@ static int32_t lm36011_driver_platform_probe(
 					ctrl->silego.fault_flag);
 				ctrl->silego.is_validated = false;
 			} else
-				dev_info(ctrl->soc_info.dev,
+				dev_dbg(ctrl->soc_info.dev,
 					"Silego state: 0x%x",
 					ctrl->silego.fault_flag);
 		}
@@ -2311,10 +2311,10 @@ static int32_t lm36011_driver_platform_probe(
 		goto error_destroy_device;
 
 	if (device_id == DEVICE_ID)
-		_dev_info(&pdev->dev, "probe success, device id 0x%x rc = %d",
+		dev_dbg(&pdev->dev, "probe success, device id 0x%x rc = %d",
 			device_id, rc);
 	else
-		dev_warn(&pdev->dev, "Device id mismatch, got 0x%x,"
+		dev_dbg(&pdev->dev, "Device id mismatch, got 0x%x,"
 			" expected 0x%x rc = %d", device_id, DEVICE_ID, rc);
 
 	ctrl->is_probed = true;
