@@ -135,13 +135,13 @@ static long faceauth_dev_ioctl(struct file *file, unsigned int cmd,
 	down_read(&data->rwsem);
 	if (!data->can_transfer && cmd != FACEAUTH_DEV_IOC_DEBUG_DATA) {
 		err = -EIO;
-		pr_info("Cannot do transfer due to link down\n");
+		pr_debug("Cannot do transfer due to link down\n");
 		goto exit;
 	}
 
 	switch (cmd) {
 	case FACEAUTH_DEV_IOC_INIT:
-		pr_info("el2: faceauth init IOCTL\n");
+		pr_debug("el2: faceauth init IOCTL\n");
 
 		if (copy_from_user(&init_step_data, (const void __user *)arg,
 				   sizeof(init_step_data))) {
@@ -162,7 +162,7 @@ static long faceauth_dev_ioctl(struct file *file, unsigned int cmd,
 			goto exit;
 		break;
 	case FACEAUTH_DEV_IOC_START:
-		pr_info("el2: faceauth start IOCTL\n");
+		pr_debug("el2: faceauth start IOCTL\n");
 
 		if (copy_from_user(&start_step_data, (const void __user *)arg,
 				   sizeof(start_step_data))) {
@@ -207,7 +207,7 @@ static long faceauth_dev_ioctl(struct file *file, unsigned int cmd,
 			goto exit;
 
 		/* Check completion flag */
-		pr_info("Waiting for completion.\n");
+		pr_debug("Waiting for completion.\n");
 		if (start_step_data.operation == COMMAND_ENROLL) {
 			polling_pause = M0_ENROLL_POLLING_PAUSE_US;
 			polling_interval = M0_ENROLL_POLLING_INTERVAL_US;
@@ -268,7 +268,7 @@ static long faceauth_dev_ioctl(struct file *file, unsigned int cmd,
 	case FACEAUTH_DEV_IOC_CLEANUP:
 		/* In case of EL2 cleanup happens in PIL callback */
 		/* TODO cleanup Airbrush DRAM */
-		pr_info("el2: faceauth cleanup IOCTL\n");
+		pr_debug("el2: faceauth cleanup IOCTL\n");
 		el2_faceauth_cleanup(data->device);
 		data->is_secure_camera = false;
 		break;
@@ -277,7 +277,7 @@ static long faceauth_dev_ioctl(struct file *file, unsigned int cmd,
 			err = -EOPNOTSUPP;
 			break;
 		}
-		pr_info("el2: faceauth debug log IOCTL\n");
+		pr_debug("el2: faceauth debug log IOCTL\n");
 		if (copy_from_user(&debug_step_data, (const void __user *)arg,
 				   sizeof(debug_step_data))) {
 			err = -EFAULT;
@@ -293,7 +293,7 @@ static long faceauth_dev_ioctl(struct file *file, unsigned int cmd,
 			err = -EOPNOTSUPP;
 			break;
 		}
-		pr_info("el2: faceauth debug data IOCTL\n");
+		pr_debug("el2: faceauth debug data IOCTL\n");
 		if (copy_from_user(&debug_step_data, (const void __user *)arg,
 				   sizeof(debug_step_data))) {
 			err = -EFAULT;
@@ -315,7 +315,7 @@ static long faceauth_dev_ioctl(struct file *file, unsigned int cmd,
 			break;
 		case FACEAUTH_GET_DEBUG_DATA_FROM_AB_DRAM:
 			if (!data->can_transfer) {
-				pr_info("Cannot do transfer due to link down\n");
+				pr_debug("Cannot do transfer due to link down\n");
 				err = -EIO;
 				goto exit;
 			}
@@ -480,7 +480,7 @@ static void faceauth_link_listener_init(struct work_struct *work)
 	/* TODO: Use retry count to dynamiclly adjust retry timeout */
 	if (err == -EAGAIN) {
 		if (data->retry_count % 50 == 0)
-			pr_info("Retry faceauth link init later.\n");
+			pr_debug("Retry faceauth link init later.\n");
 		data->retry_count++;
 		schedule_delayed_work(&data->listener_init,
 				      msecs_to_jiffies(1000));
@@ -488,7 +488,7 @@ static void faceauth_link_listener_init(struct work_struct *work)
 		pr_err("CANNOT init link listened event in faceauth driver, err code %d\n",
 		       err);
 	else
-		pr_info("Successfully register link listener for faceauth driver");
+		pr_debug("Successfully register link listener for faceauth driver");
 	return;
 }
 
@@ -528,7 +528,7 @@ static int faceauth_pcie_blocking_listener(struct notifier_block *nb,
 		/* Use the writer lock to prevent any incoming reader */
 		down_write(&dev_data->rwsem);
 		dev_data->can_transfer = false;
-		pr_info("All ongoing ioctls are finished, confirm disable");
+		pr_debug("All ongoing ioctls are finished, confirm disable");
 		up_write(&dev_data->rwsem);
 		return NOTIFY_OK;
 	}
