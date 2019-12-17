@@ -85,27 +85,13 @@ function kmake() {
 
 # Create a zipfile
 function mkzip() {
-    echo "Removing old kernel files"
-    echo " "
-    rm -rf flasher/kernel
-    rm -rf flasher/dtbs
-    mkdir flasher/kernel
-    mkdir flasher/dtbs
     echo "Copying new kernel files"
     echo " "
-    cp out/arch/arm64/boot/Image.lz4 flasher/kernel/Image.lz4
-    cp -r out/arch/arm64/boot/dts/google/qcom-base/* flasher/dtbs
-    read -p 'Version number: ' version
-    zipname="Artemis_coral_v$version.zip"
-    echo " "
-    cd flasher
-    echo "Creating zipfile with name $zipname, please wait..."
-    zip -r "$zipname" *
-    cd ../
-    mkdir -p out/flasher
-    mv flasher/$zipname out/flasher/$zipname
+    cp out/arch/arm64/boot/Image.lz4-dtb ../AnyKernel3/
+    cd ../AnyKernel3
+    rm Artemis.zip
+    zip -r9 Artemis.zip * -x .git README.me
     echo "Zip successfuly created"
-    echo " "
-    echo "Your zip is stored in out/flasher/$zipname"
+    cd ../pixel4
 }
 
