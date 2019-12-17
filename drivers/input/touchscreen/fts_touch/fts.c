@@ -222,7 +222,7 @@ static ssize_t fts_fwupdate_store(struct device *dev,
 
 	/* reading out firmware upgrade parameters */
 	if (sscanf(buf, "%100s %d %d", path, &mode[0], &mode[1]) >= 1) {
-		pr_info("%s: file = %s, force = %d, keep_cx = %d\n", __func__,
+		pr_debug("%s: file = %s, force = %d, keep_cx = %d\n", __func__,
 			path, mode[0], mode[1]);
 		fts_set_bus_ref(info, FTS_BUS_REF_SYSFS, true);
 
@@ -236,13 +236,13 @@ static ssize_t fts_fwupdate_store(struct device *dev,
 		fts_set_bus_ref(info, FTS_BUS_REF_SYSFS, false);
 
 		if (ret == ERROR_BUS_WR)
-			pr_err("%s: bus is not accessible. ERROR %08X\n",
+			pr_debug("%s: bus is not accessible. ERROR %08X\n",
 				__func__, ret);
 		else if (ret < OK)
-			pr_err("%s Unable to upgrade firmware! ERROR %08X\n",
+			pr_debug("%s Unable to upgrade firmware! ERROR %08X\n",
 				__func__, ret);
 	} else
-		pr_err("%s: Wrong number of parameters! ERROR %08X\n",
+		pr_debug("%s: Wrong number of parameters! ERROR %08X\n",
 			__func__, ERROR_OP_NOT_ALLOW);
 	return count;
 }
@@ -328,7 +328,7 @@ static ssize_t fts_mode_active_show(struct device *dev,
 {
 	struct fts_ts_info *info = dev_get_drvdata(dev);
 
-	pr_info("Current mode active = %08X\n", info->mode);
+	pr_debug("Current mode active = %08X\n", info->mode);
 	return scnprintf(buf, PAGE_SIZE, "{ %08X }\n", info->mode);
 }
 
@@ -349,9 +349,9 @@ static ssize_t fts_fw_test_show(struct device *dev,
 	ret = readFwFile(info->board->fw_name, &fw, 0);
 
 	if (ret < OK)
-		pr_err("Error during reading FW file! ERROR %08X\n", ret);
+		pr_debug("Error during reading FW file! ERROR %08X\n", ret);
 	else
-		pr_info("%s, size = %d bytes\n",
+		pr_debug("%s, size = %d bytes\n",
 			 printHex("EXT Release = ",
 				  systemInfo.u8_releaseInfo,
 				  EXTERNAL_RELEASE_INFO_SIZE,
@@ -374,7 +374,7 @@ static ssize_t fts_status_show(struct device *dev,
 	int i;
 
 	if (fts_set_bus_ref(info, FTS_BUS_REF_SYSFS, true) < 0) {
-		pr_err("%s: bus is not accessible.\n", __func__);
+		pr_debug("%s: bus is not accessible.\n", __func__);
 		written += scnprintf(buf, PAGE_SIZE,
 				     "Bus is not accessible.\n");
 		goto exit;
@@ -386,7 +386,7 @@ static ssize_t fts_status_show(struct device *dev,
 	res = fts_writeReadU8UX(FTS_CMD_HW_REG_R, ADDR_SIZE_HW_REG, ADDR_ICR,
 				&reg, 1, DUMMY_HW_REG);
 	if (res < 0)
-		pr_err("%s: failed to read ICR.\n", __func__);
+		pr_debug("%s: failed to read ICR.\n", __func__);
 	else
 		written += scnprintf(buf + written, PAGE_SIZE - written,
 			     "ICR: 0x%02X\n", reg);
@@ -453,14 +453,14 @@ static ssize_t fts_strength_frame_show(struct device *dev,
 
 	res = senseOn();
 	if (res < OK) {
-		pr_err("%s: could not start scanning! ERROR %08X\n",
+		pr_debug("%s: could not start scanning! ERROR %08X\n",
 			__func__, res);
 		goto END;
 	}
 	mdelay(WAIT_FOR_FRESH_FRAMES);
 	res = senseOff();
 	if (res < OK) {
-		pr_err("%s: could not finish scanning! ERROR %08X\n",
+		pr_debug("%s: could not finish scanning! ERROR %08X\n",
 			__func__, res);
 		goto END;
 	}
@@ -470,12 +470,12 @@ static ssize_t fts_strength_frame_show(struct device *dev,
 
 	res = getMSFrame3(MS_STRENGTH, &frame);
 	if (res < OK) {
-		pr_err("%s: could not get the frame! ERROR %08X\n",
+		pr_debug("%s: could not get the frame! ERROR %08X\n",
 			__func__, res);
 		goto END;
 	} else {
 		size += (res * 6);
-		pr_info("The frame size is %d words\n", res);
+		pr_debug("The frame size is %d words\n", res);
 		res = OK;
 		print_frame_short("MS Strength frame =", array1dTo2d_short(
 					  frame.node_data, frame.node_data_size,
@@ -520,7 +520,7 @@ END:
 		count = snprintf(buf, TSP_BUF_SIZE, "%s\n", all_strbuff);
 		kfree(all_strbuff);
 	} else
-		pr_err("%s: Unable to allocate all_strbuff! ERROR %08X\n",
+		pr_debug("%s: Unable to allocate all_strbuff! ERROR %08X\n",
 			__func__, ERROR_ALLOC);
 
 	fts_enableInterrupt(true);
@@ -558,7 +558,7 @@ int check_feature_feasibility(struct fts_ts_info *info, unsigned int feature)
 	  *              break;
 	  #endif
 	  *              default:
-	  *                      pr_err("%s: Feature not allowed in this
+	  *                      pr_debug("%s: Feature not allowed in this
 	  * operating mode! ERROR %08X\n", __func__, res);
 	  *              break;
 	  *
@@ -574,7 +574,7 @@ int check_feature_feasibility(struct fts_ts_info *info, unsigned int feature)
 	  *              break;
 	  *
 	  *              default:
-	  *                      pr_err("%s: Feature not allowed in this
+	  *                      pr_debug("%s: Feature not allowed in this
 	  * operating mode! ERROR %08X\n", __func__, res);
 	  *              break;
 	  *
@@ -587,7 +587,7 @@ int check_feature_feasibility(struct fts_ts_info *info, unsigned int feature)
 	case FEAT_SEL_GESTURE:
 		if (info->cover_enabled == 1) {
 			res = ERROR_OP_NOT_ALLOW;
-			pr_err("%s: Feature not allowed when in Cover mode! ERROR %08X\n",
+			pr_debug("%s: Feature not allowed when in Cover mode! ERROR %08X\n",
 				__func__, res);
 			/* for example here can be placed a code for disabling
 			  * the cover mode when gesture is activated */
@@ -597,7 +597,7 @@ int check_feature_feasibility(struct fts_ts_info *info, unsigned int feature)
 	case FEAT_SEL_GLOVE:
 		if (info->gesture_enabled == 1) {
 			res = ERROR_OP_NOT_ALLOW;
-			pr_err("%s: Feature not allowed when Gestures enabled! ERROR %08X\n",
+			pr_debug("%s: Feature not allowed when Gestures enabled! ERROR %08X\n",
 				__func__, res);
 			/* for example here can be placed a code for disabling
 			  * the gesture mode when cover is activated
@@ -607,7 +607,7 @@ int check_feature_feasibility(struct fts_ts_info *info, unsigned int feature)
 		break;
 
 	default:
-		pr_info("%s: Feature Allowed!\n", __func__);
+		pr_debug("%s: Feature Allowed!\n", __func__);
 	}
 
 	return res;
@@ -638,13 +638,13 @@ static ssize_t fts_feature_enable_store(struct device *dev,
 
 	if (fts_set_bus_ref(info, FTS_BUS_REF_SYSFS, true) < 0) {
 		res = ERROR_BUS_WR;
-		pr_err("%s: bus is not accessible.", __func__);
+		pr_debug("%s: bus is not accessible.", __func__);
 		fts_set_bus_ref(info, FTS_BUS_REF_SYSFS, false);
 		return count;
 	}
 
 	if ((count - 2 + 1) / 3 != 1)
-		pr_err("fts_feature_enable: Number of parameter wrong! %d > %d\n",
+		pr_debug("fts_feature_enable: Number of parameter wrong! %d > %d\n",
 			(count - 2 + 1) / 3, 1);
 	else {
 		if (sscanf(p, "%02X %02X ", &temp, &temp2) == 2) {
@@ -655,7 +655,7 @@ static ssize_t fts_feature_enable_store(struct device *dev,
 		#ifdef GESTURE_MODE
 				case FEAT_SEL_GESTURE:
 					info->gesture_enabled = temp2;
-					pr_info("fts_feature_enable: Gesture Enabled = %d\n",
+					pr_debug("fts_feature_enable: Gesture Enabled = %d\n",
 						info->gesture_enabled);
 					break;
 		#endif
@@ -663,7 +663,7 @@ static ssize_t fts_feature_enable_store(struct device *dev,
 		#ifdef GLOVE_MODE
 				case FEAT_SEL_GLOVE:
 					info->glove_enabled = temp2;
-					pr_info("fts_feature_enable: Glove Enabled = %d\n",
+					pr_debug("fts_feature_enable: Glove Enabled = %d\n",
 						info->glove_enabled);
 					break;
 		#endif
@@ -671,7 +671,7 @@ static ssize_t fts_feature_enable_store(struct device *dev,
 		#ifdef STYLUS_MODE
 				case FEAT_SEL_STYLUS:
 					info->stylus_enabled = temp2;
-					pr_info("fts_feature_enable: Stylus Enabled = %d\n",
+					pr_debug("fts_feature_enable: Stylus Enabled = %d\n",
 						info->stylus_enabled);
 					break;
 		#endif
@@ -679,7 +679,7 @@ static ssize_t fts_feature_enable_store(struct device *dev,
 		#ifdef COVER_MODE
 				case FEAT_SEL_COVER:
 					info->cover_enabled = temp2;
-					pr_info("fts_feature_enable: Cover Enabled = %d\n",
+					pr_debug("fts_feature_enable: Cover Enabled = %d\n",
 						info->cover_enabled);
 					break;
 		#endif
@@ -687,7 +687,7 @@ static ssize_t fts_feature_enable_store(struct device *dev,
 		#ifdef CHARGER_MODE
 				case FEAT_SEL_CHARGER:
 					info->charger_enabled = temp2;
-					pr_info("fts_feature_enable: Charger Enabled = %d\n",
+					pr_debug("fts_feature_enable: Charger Enabled = %d\n",
 						info->charger_enabled);
 					break;
 		#endif
@@ -695,7 +695,7 @@ static ssize_t fts_feature_enable_store(struct device *dev,
 		#ifdef GRIP_MODE
 				case FEAT_SEL_GRIP:
 					info->grip_enabled = temp2;
-					pr_info("fts_feature_enable: Grip Enabled = %d\n",
+					pr_debug("fts_feature_enable: Grip Enabled = %d\n",
 						info->grip_enabled);
 					break;
 		#endif
@@ -703,7 +703,7 @@ static ssize_t fts_feature_enable_store(struct device *dev,
 
 
 				default:
-					pr_err("fts_feature_enable: Feature %08X not valid! ERROR %08X\n",
+					pr_debug("fts_feature_enable: Feature %08X not valid! ERROR %08X\n",
 						temp, ERROR_OP_NOT_ALLOW);
 					res = ERROR_OP_NOT_ALLOW;
 				}
@@ -712,10 +712,10 @@ static ssize_t fts_feature_enable_store(struct device *dev,
 			if (feature_feasibility >= OK)
 				feature_feasibility = fts_mode_handler(info, 1);
 			else
-				pr_err("%s: Call echo XX 00/01 > feature_enable with a correct feature value (XX)! ERROR %08X\n",
+				pr_debug("%s: Call echo XX 00/01 > feature_enable with a correct feature value (XX)! ERROR %08X\n",
 					__func__, res);
 		} else
-			pr_err("%s: Error when reading with sscanf!\n",
+			pr_debug("%s: Error when reading with sscanf!\n",
 				__func__);
 	}
 
@@ -731,7 +731,7 @@ static ssize_t fts_feature_enable_show(struct device *dev,
 	int count = 0;
 
 	if (feature_feasibility < OK)
-		pr_err("%s: Call before echo XX 00/01 > feature_enable with a correct feature value (XX)! ERROR %08X\n",
+		pr_debug("%s: Call before echo XX 00/01 > feature_enable with a correct feature value (XX)! ERROR %08X\n",
 			__func__, feature_feasibility);
 
 	count += scnprintf(buf + count,
@@ -766,7 +766,7 @@ static ssize_t fts_grip_mode_show(struct device *dev,
 
 	struct fts_ts_info *info = dev_get_drvdata(dev);
 
-	pr_info("%s: grip_enabled = %d\n", __func__,
+	pr_debug("%s: grip_enabled = %d\n", __func__,
 		 info->grip_enabled);
 
 	count += scnprintf(buf + count,
@@ -788,7 +788,7 @@ static ssize_t fts_grip_mode_store(struct device *dev,
 
 	if (fts_set_bus_ref(info, FTS_BUS_REF_SYSFS, true) < 0) {
 		res = ERROR_BUS_WR;
-		pr_err("%s: bus is not accessible.", __func__);
+		pr_debug("%s: bus is not accessible.", __func__);
 		fts_set_bus_ref(info, FTS_BUS_REF_SYSFS, false);
 		return count;
 	}
@@ -796,7 +796,7 @@ static ssize_t fts_grip_mode_store(struct device *dev,
 	/* in case of a different elaboration of the input, just modify
 	  * this initial part of the code according to customer needs */
 	if ((count + 1) / 3 != 1)
-		pr_err("%s: Number of bytes of parameter wrong! %zu != 1 byte\n",
+		pr_debug("%s: Number of bytes of parameter wrong! %zu != 1 byte\n",
 			__func__, (count + 1) / 3);
 	else {
 		if (sscanf(p, "%02X ", &temp) == 1) {
@@ -811,11 +811,11 @@ static ssize_t fts_grip_mode_store(struct device *dev,
 				info->grip_enabled = temp;
 				res = fts_mode_handler(info, 1);
 				if (res < OK)
-					pr_err("%s: Error during fts_mode_handler! ERROR %08X\n",
+					pr_debug("%s: Error during fts_mode_handler! ERROR %08X\n",
 						__func__, res);
 			}
 		} else
-			pr_err("%s: Error when reading with sscanf!\n",
+			pr_debug("%s: Error when reading with sscanf!\n",
 				__func__);
 	}
 
@@ -845,7 +845,7 @@ static ssize_t fts_charger_mode_show(struct device *dev,
 	int count = 0;
 	struct fts_ts_info *info = dev_get_drvdata(dev);
 
-	pr_info("%s: charger_enabled = %d\n", __func__,
+	pr_debug("%s: charger_enabled = %d\n", __func__,
 		 info->charger_enabled);
 
 	count += scnprintf(buf + count,
@@ -866,7 +866,7 @@ static ssize_t fts_charger_mode_store(struct device *dev,
 
 	if (fts_set_bus_ref(info, FTS_BUS_REF_SYSFS, true) < 0) {
 		res = ERROR_BUS_WR;
-		pr_err("%s: bus is not accessible.\n", __func__);
+		pr_debug("%s: bus is not accessible.\n", __func__);
 		fts_set_bus_ref(info, FTS_BUS_REF_SYSFS, false);
 		return count;
 	}
@@ -874,7 +874,7 @@ static ssize_t fts_charger_mode_store(struct device *dev,
 /* in case of a different elaboration of the input, just modify this
   * initial part of the code according to customer needs */
 	if ((count + 1) / 3 != 1)
-		pr_err("%s: Number of bytes of parameter wrong! %zu != 1 byte\n",
+		pr_debug("%s: Number of bytes of parameter wrong! %zu != 1 byte\n",
 			__func__, (count + 1) / 3);
 	else {
 		if (sscanf(p, "%02X ", &temp) == 1) {
@@ -890,11 +890,11 @@ static ssize_t fts_charger_mode_store(struct device *dev,
 				info->charger_enabled = temp;
 				res = fts_mode_handler(info, 1);
 				if (res < OK)
-					pr_err("%s: Error during fts_mode_handler! ERROR %08X\n",
+					pr_debug("%s: Error during fts_mode_handler! ERROR %08X\n",
 						__func__, res);
 			}
 		} else
-			pr_err("%s: Error when reading with sscanf!\n",
+			pr_debug("%s: Error when reading with sscanf!\n",
 				__func__);
 
 	}
@@ -923,7 +923,7 @@ static ssize_t fts_glove_mode_show(struct device *dev,
 	int count = 0;
 	struct fts_ts_info *info = dev_get_drvdata(dev);
 
-	pr_info("%s: glove_enabled = %d\n", __func__, info->glove_enabled);
+	pr_debug("%s: glove_enabled = %d\n", __func__, info->glove_enabled);
 
 	count += scnprintf(buf + count,
 			   PAGE_SIZE - count, "{ %08X }\n",
@@ -944,7 +944,7 @@ static ssize_t fts_glove_mode_store(struct device *dev,
 
 	if (fts_set_bus_ref(info, FTS_BUS_REF_SYSFS, true) < 0) {
 		res = ERROR_BUS_WR;
-		pr_err("%s: bus is not accessible.\n", __func__);
+		pr_debug("%s: bus is not accessible.\n", __func__);
 		fts_set_bus_ref(info, FTS_BUS_REF_SYSFS, false);
 		return count;
 	}
@@ -952,7 +952,7 @@ static ssize_t fts_glove_mode_store(struct device *dev,
 /* in case of a different elaboration of the input, just modify this
   * initial part of the code according to customer needs */
 	if ((count + 1) / 3 != 1)
-		pr_err("%s: Number of bytes of parameter wrong! %zu != 1 byte\n",
+		pr_debug("%s: Number of bytes of parameter wrong! %zu != 1 byte\n",
 			__func__, (count + 1) / 3);
 	else {
 		if (sscanf(p, "%02X ", &temp) == 1) {
@@ -967,11 +967,11 @@ static ssize_t fts_glove_mode_store(struct device *dev,
 				info->glove_enabled = temp;
 				res = fts_mode_handler(info, 1);
 				if (res < OK)
-					pr_err("%s: Error during fts_mode_handler! ERROR %08X\n",
+					pr_debug("%s: Error during fts_mode_handler! ERROR %08X\n",
 						__func__, res);
 			}
 		} else
-			pr_err("%s: Error when reading with sscanf!\n",
+			pr_debug("%s: Error when reading with sscanf!\n",
 				__func__);
 	}
 
@@ -1010,7 +1010,7 @@ static ssize_t fts_cover_mode_show(struct device *dev,
 	int count = 0;
 	struct fts_ts_info *info = dev_get_drvdata(dev);
 
-	pr_info("%s: cover_enabled = %d\n", __func__, info->cover_enabled);
+	pr_debug("%s: cover_enabled = %d\n", __func__, info->cover_enabled);
 
 	count += scnprintf(buf + count,
 			   PAGE_SIZE - count, "{ %08X }\n",
@@ -1031,7 +1031,7 @@ static ssize_t fts_cover_mode_store(struct device *dev,
 
 	if (fts_set_bus_ref(info, FTS_BUS_REF_SYSFS, true) < 0) {
 		res = ERROR_BUS_WR;
-		pr_err("%s: bus is not accessible.\n", __func__);
+		pr_debug("%s: bus is not accessible.\n", __func__);
 		fts_set_bus_ref(info, FTS_BUS_REF_SYSFS, false);
 		return count;
 	}
@@ -1039,7 +1039,7 @@ static ssize_t fts_cover_mode_store(struct device *dev,
 /* in case of a different elaboration of the input, just modify this
   * initial part of the code according to customer needs */
 	if ((count + 1) / 3 != 1)
-		pr_err("%s: Number of bytes of parameter wrong! %zu != 1 byte\n",
+		pr_debug("%s: Number of bytes of parameter wrong! %zu != 1 byte\n",
 			__func__, (count + 1) / 3);
 	else {
 		if (sscanf(p, "%02X ", &temp) == 1) {
@@ -1054,11 +1054,11 @@ static ssize_t fts_cover_mode_store(struct device *dev,
 				info->cover_enabled = temp;
 				res = fts_mode_handler(info, 1);
 				if (res < OK)
-					pr_err("%s: Error during fts_mode_handler! ERROR %08X\n",
+					pr_debug("%s: Error during fts_mode_handler! ERROR %08X\n",
 						__func__, res);
 			}
 		} else
-			pr_err("%s: Error when reading with sscanf!\n",
+			pr_debug("%s: Error when reading with sscanf!\n",
 				__func__);
 	}
 
@@ -1086,7 +1086,7 @@ static ssize_t fts_stylus_mode_show(struct device *dev,
 	int count = 0;
 	struct fts_ts_info *info = dev_get_drvdata(dev);
 
-	pr_info("%s: stylus_enabled = %d\n", __func__, info->stylus_enabled);
+	pr_debug("%s: stylus_enabled = %d\n", __func__, info->stylus_enabled);
 
 	count += scnprintf(buf + count,
 			   PAGE_SIZE - count, "{ %08X }\n",
@@ -1108,14 +1108,14 @@ static ssize_t fts_stylus_mode_store(struct device *dev,
 /* in case of a different elaboration of the input, just modify this
   * initial part of the code according to customer needs */
 	if ((count + 1) / 3 != 1)
-		pr_err("%s: Number of bytes of parameter wrong! %zu != 1 byte\n",
+		pr_debug("%s: Number of bytes of parameter wrong! %zu != 1 byte\n",
 			__func__, (count + 1) / 3);
 	else {
 		if (sscanf(p, "%02X ", &temp) == 1) {
 			p += 3;
 			info->stylus_enabled = temp;
 		} else
-			pr_err("%s: Error when reading with sscanf!\n",
+			pr_debug("%s: Error when reading with sscanf!\n",
 				__func__);
 	}
 
@@ -1176,7 +1176,7 @@ static ssize_t fts_gesture_mask_show(struct device *dev,
 
 	if (fts_set_bus_ref(info, FTS_BUS_REF_SYSFS, true) < 0) {
 		res = ERROR_BUS_WR;
-		pr_err("%s: bus is not accessible.\n", __func__);
+		pr_debug("%s: bus is not accessible.\n", __func__);
 		scnprintf(buf, PAGE_SIZE, "{ %08X }\n", res);
 		fts_set_bus_ref(info, FTS_BUS_REF_SYSFS, false);
 		return count;
@@ -1184,7 +1184,7 @@ static ssize_t fts_gesture_mask_show(struct device *dev,
 
 	if (mask[0] == 0) {
 		res = ERROR_OP_NOT_ALLOW;
-		pr_err("%s: Call before echo enable/disable xx xx .... > gesture_mask with a correct number of parameters! ERROR %08X\n",
+		pr_debug("%s: Call before echo enable/disable xx xx .... > gesture_mask with a correct number of parameters! ERROR %08X\n",
 			__func__, res);
 	} else {
 		if (mask[1] == FEAT_ENABLE || mask[1] == FEAT_DISABLE)
@@ -1193,14 +1193,14 @@ static ssize_t fts_gesture_mask_show(struct device *dev,
 			res = ERROR_OP_NOT_ALLOW;
 
 		if (res < OK)
-			pr_err("fts_gesture_mask_store: ERROR %08X\n", res);
+			pr_debug("fts_gesture_mask_store: ERROR %08X\n", res);
 	}
 	res |= check_feature_feasibility(info, FEAT_SEL_GESTURE);
 	temp = isAnyGestureActive();
 	if (res >= OK || temp == FEAT_DISABLE)
 		info->gesture_enabled = temp;
 
-	pr_info("fts_gesture_mask_store: Gesture Enabled = %d\n",
+	pr_debug("fts_gesture_mask_store: Gesture Enabled = %d\n",
 		 info->gesture_enabled);
 
 	count += scnprintf(buf + count,
@@ -1221,7 +1221,7 @@ static ssize_t fts_gesture_mask_store(struct device *dev,
 	unsigned int temp;
 
 	if ((count + 1) / 3 > GESTURE_MASK_SIZE + 1) {
-		pr_err("fts_gesture_mask_store: Number of bytes of parameter wrong! %zu > (enable/disable + %d )\n",
+		pr_debug("fts_gesture_mask_store: Number of bytes of parameter wrong! %zu > (enable/disable + %d )\n",
 			(count + 1) / 3, GESTURE_MASK_SIZE);
 		mask[0] = 0;
 	} else {
@@ -1230,9 +1230,9 @@ static ssize_t fts_gesture_mask_store(struct device *dev,
 			if (sscanf(p, "%02X ", &temp) == 1) {
 				p += 3;
 				mask[n] = (u8)temp;
-				pr_info("mask[%d] = %02X\n", n, mask[n]);
+				pr_debug("mask[%d] = %02X\n", n, mask[n]);
 			} else
-				pr_err("%s: Error when reading with sscanf!\n",
+				pr_debug("%s: Error when reading with sscanf!\n",
 					__func__);
 		}
 	}
@@ -1280,7 +1280,7 @@ static ssize_t fts_gesture_mask_show(struct device *dev,
 	int count = 0;
 	struct fts_ts_info *info = dev_get_drvdata(dev);
 
-	pr_info("fts_gesture_mask_show: gesture_enabled = %d\n",
+	pr_debug("fts_gesture_mask_show: gesture_enabled = %d\n",
 		info->gesture_enabled);
 
 	count += scnprintf(buf + count,
@@ -1304,13 +1304,13 @@ static ssize_t fts_gesture_mask_store(struct device *dev,
 
 	if (fts_set_bus_ref(info, FTS_BUS_REF_SYSFS, true) < 0) {
 		res = ERROR_BUS_WR;
-		pr_err("%s: bus is not accessible.\n", __func__);
+		pr_debug("%s: bus is not accessible.\n", __func__);
 		fts_set_bus_ref(info, FTS_BUS_REF_SYSFS, false);
 		return count;
 	}
 
 	if ((count + 1) / 3 < 2 || (count + 1) / 3 > GESTURE_MASK_SIZE + 1) {
-		pr_err("fts_gesture_mask_store: Number of bytes of parameter wrong! %d < or > (enable/disable + at least one gestureID or max %d bytes)\n",
+		pr_debug("fts_gesture_mask_store: Number of bytes of parameter wrong! %d < or > (enable/disable + at least one gestureID or max %d bytes)\n",
 			(count + 1) / 3, GESTURE_MASK_SIZE);
 		mask[0] = 0;
 	} else {
@@ -1325,7 +1325,7 @@ static ssize_t fts_gesture_mask_store(struct device *dev,
 					fromIDtoMask((u8)temp, &mask[2],
 						GESTURE_MASK_SIZE);
 				} else {
-					pr_err("%s: Error when reading with sscanf!\n",
+					pr_debug("%s: Error when reading with sscanf!\n",
 						__func__);
 					mask[0] = 0;
 					goto END;
@@ -1333,9 +1333,9 @@ static ssize_t fts_gesture_mask_store(struct device *dev,
 			}
 
 			for (n = 0; n < GESTURE_MASK_SIZE + 2; n++)
-				pr_info("mask[%d] = %02X\n", n, mask[n]);
+				pr_debug("mask[%d] = %02X\n", n, mask[n]);
 		} else {
-			pr_err("%s: Error when reading with sscanf!\n",
+			pr_debug("%s: Error when reading with sscanf!\n",
 				__func__);
 			mask[0] = 0;
 		}
@@ -1344,7 +1344,7 @@ static ssize_t fts_gesture_mask_store(struct device *dev,
 END:
 	if (mask[0] == 0) {
 		res = ERROR_OP_NOT_ALLOW;
-		pr_err("%s: Call before echo enable/disable xx xx .... > gesture_mask with a correct number of parameters! ERROR %08X\n",
+		pr_debug("%s: Call before echo enable/disable xx xx .... > gesture_mask with a correct number of parameters! ERROR %08X\n",
 			__func__, res);
 	} else {
 		if (mask[1] == FEAT_ENABLE || mask[1] == FEAT_DISABLE)
@@ -1353,7 +1353,7 @@ END:
 			res = ERROR_OP_NOT_ALLOW;
 
 		if (res < OK)
-			pr_err("fts_gesture_mask_store: ERROR %08X\n", res);
+			pr_debug("fts_gesture_mask_store: ERROR %08X\n", res);
 	}
 
 	res = check_feature_feasibility(info, FEAT_SEL_GESTURE);
@@ -1391,10 +1391,10 @@ static ssize_t fts_gesture_coordinates_show(struct device *dev,
 	int size = PAGE_SIZE;
 	int count = 0, res, i = 0;
 
-	pr_info("%s: Getting gestures coordinates...\n", __func__);
+	pr_debug("%s: Getting gestures coordinates...\n", __func__);
 
 	if (gesture_coords_reported < OK) {
-		pr_err("%s: invalid coordinates! ERROR %08X\n",
+		pr_debug("%s: invalid coordinates! ERROR %08X\n",
 			 __func__, gesture_coords_reported);
 		res = gesture_coords_reported;
 	} else {
@@ -1427,7 +1427,7 @@ static ssize_t fts_gesture_coordinates_show(struct device *dev,
 	}
 
 	count += scnprintf(buf + count, size - count, " }\n");
-	pr_info("%s: Getting gestures coordinates FINISHED!\n", __func__);
+	pr_debug("%s: Getting gestures coordinates FINISHED!\n", __func__);
 
 	return count;
 }
@@ -1530,13 +1530,13 @@ static int touchsim_start(struct fts_touchsim *touchsim)
 	int res;
 
 	if (!touchsim->wq) {
-		pr_err("%s: touch simulation test wq is not available!\n",
+		pr_debug("%s: touch simulation test wq is not available!\n",
 			__func__);
 		return -EFAULT;
 	}
 
 	if (touchsim->is_running) {
-		pr_err("%s: test in progress!\n", __func__);
+		pr_debug("%s: test in progress!\n", __func__);
 		return -EBUSY;
 	}
 
@@ -1552,7 +1552,7 @@ static int touchsim_start(struct fts_touchsim *touchsim)
 	/* Disable touch interrupts from hw */
 	res = fts_enableInterrupt(false);
 	if ( res != OK)
-		pr_err("%s: fts_enableInterrupt: ERROR %08X\n", __func__, res);
+		pr_debug("%s: fts_enableInterrupt: ERROR %08X\n", __func__, res);
 
 	/* Release all touches in the linux input subsystem */
 	release_all_touches(info);
@@ -1576,7 +1576,7 @@ static int touchsim_stop(struct fts_touchsim *touchsim)
 	int res;
 
 	if (!touchsim->is_running) {
-		pr_err("%s: test is not in progress!\n", __func__);
+		pr_debug("%s: test is not in progress!\n", __func__);
 		return -EINVAL;
 	}
 
@@ -1596,7 +1596,7 @@ static int touchsim_stop(struct fts_touchsim *touchsim)
 	/* re enable the hw touch interrupt */
 	res = fts_enableInterrupt(true);
 	if ( res != OK)
-		pr_err("%s: fts_enableInterrupt: ERROR %08X\n", __func__, res);
+		pr_debug("%s: fts_enableInterrupt: ERROR %08X\n", __func__, res);
 
 
 	return OK;
@@ -1634,13 +1634,13 @@ static ssize_t fts_touch_simulation_store(struct device *dev,
 	u8 result;
 
 	if (!mutex_trylock(&info->diag_cmd_lock)) {
-		pr_err("%s: Blocking concurrent access\n", __func__);
+		pr_debug("%s: Blocking concurrent access\n", __func__);
 		retval = -EBUSY;
 		goto out;
 	}
 
 	if (kstrtou8(buf, 16, &result)) {
-		pr_err("%s:bad input. valid inputs are either 0 or 1!\n",
+		pr_debug("%s:bad input. valid inputs are either 0 or 1!\n",
 			 __func__);
 		retval = -EINVAL;
 		goto unlock;
@@ -1651,7 +1651,7 @@ static ssize_t fts_touch_simulation_store(struct device *dev,
 	else if (result == 0)
 		touchsim_stop(&info->touchsim);
 	else
-		pr_err("%s:Invalid cmd(%u). valid cmds are either 0 or 1!\n",
+		pr_debug("%s:Invalid cmd(%u). valid cmds are either 0 or 1!\n",
 			__func__, result);
 unlock:
 	mutex_unlock(&info->diag_cmd_lock);
@@ -1685,13 +1685,13 @@ static ssize_t fts_default_mf_store(struct device *dev,
 	ssize_t retval = count;
 
 	if (!mutex_trylock(&info->diag_cmd_lock)) {
-		pr_err("%s: Blocking concurrent access\n", __func__);
+		pr_debug("%s: Blocking concurrent access\n", __func__);
 		retval = -EBUSY;
 		goto out;
 	}
 
 	if (kstrtobool(buf, &val) < 0) {
-		pr_err("%s: bad input. valid inputs are either 0 or 1!\n",
+		pr_debug("%s: bad input. valid inputs are either 0 or 1!\n",
 			 __func__);
 		retval = -EINVAL;
 		goto unlock;
@@ -1754,19 +1754,19 @@ static ssize_t stm_fts_cmd_store(struct device *dev,
 	ssize_t retval = count;
 
 	if (!count) {
-		pr_err("%s: Invalid input buffer length!\n", __func__);
+		pr_debug("%s: Invalid input buffer length!\n", __func__);
 		retval = -EINVAL;
 		goto out;
 	}
 
 	if (!info) {
-		pr_err("%s: Unable to access driver data\n", __func__);
+		pr_debug("%s: Unable to access driver data\n", __func__);
 		retval = -EINVAL;
 		goto out;
 	}
 
 	if (!mutex_trylock(&info->diag_cmd_lock)) {
-		pr_err("%s: Blocking concurrent access\n", __func__);
+		pr_debug("%s: Blocking concurrent access\n", __func__);
 		retval = -EBUSY;
 		goto out;
 	}
@@ -1775,7 +1775,7 @@ static ssize_t stm_fts_cmd_store(struct device *dev,
 
 	temp_buf = kstrdup(buf, GFP_KERNEL);
 	if (!temp_buf) {
-		pr_err("%s: memory allocation failed!",
+		pr_debug("%s: memory allocation failed!",
 			__func__);
 		retval = -ENOMEM;
 		goto unlock;
@@ -1809,7 +1809,7 @@ static ssize_t stm_fts_cmd_store(struct device *dev,
 		if (token_len == 3 && token[2] == '\n')
 			token[2] = '\0';
 		else if (token_len != 2) {
-			pr_err("%s: bad len. len=%zu\n",
+			pr_debug("%s: bad len. len=%zu\n",
 				 __func__, token_len);
 			n = 0;
 			break;
@@ -1819,26 +1819,26 @@ static ssize_t stm_fts_cmd_store(struct device *dev,
 			/* Conversion failed due to bad input.
 			* Discard the entire buffer.
 			*/
-			pr_err("%s: bad input\n", __func__);
+			pr_debug("%s: bad input\n", __func__);
 			n = 0;
 			break;
 		}
 
 		/* found a valid cmd/args */
 		typeOfCommand[n] = result;
-		pr_info("%s: typeOfCommand[%d]=%02X\n",
+		pr_debug("%s: typeOfCommand[%d]=%02X\n",
 			__func__, n, typeOfCommand[n]);
 
 		n++;
 	}
 
 	if (n == 0) {
-		pr_err("%s: Found invalid cmd/arg\n", __func__);
+		pr_debug("%s: Found invalid cmd/arg\n", __func__);
 		retval = -EINVAL;
 	}
 
 	numberParameters = n;
-	pr_info("%s: Number of Parameters = %d\n", __func__, numberParameters);
+	pr_debug("%s: Number of Parameters = %d\n", __func__, numberParameters);
 
 	kfree(temp_buf);
 
@@ -1867,18 +1867,18 @@ static ssize_t stm_fts_cmd_show(struct device *dev,
 	u8 report = 0;
 
 	if (!info) {
-		pr_err("%s: Unable to access driver data\n", __func__);
+		pr_debug("%s: Unable to access driver data\n", __func__);
 		return  -EINVAL;
 	}
 
 	if (!mutex_trylock(&info->diag_cmd_lock)) {
-		pr_err("%s: Blocking concurrent access\n", __func__);
+		pr_debug("%s: Blocking concurrent access\n", __func__);
 		return -EBUSY;
 	}
 
 	if (fts_set_bus_ref(info, FTS_BUS_REF_SYSFS, true) < 0) {
 		res = ERROR_BUS_WR;
-		pr_err("%s: bus is not accessible.\n", __func__);
+		pr_debug("%s: bus is not accessible.\n", __func__);
 		scnprintf(buf, PAGE_SIZE, "{ %08X }\n", res);
 		fts_set_bus_ref(info, FTS_BUS_REF_SYSFS, false);
 		mutex_unlock(&info->diag_cmd_lock);
@@ -1888,7 +1888,7 @@ static ssize_t stm_fts_cmd_show(struct device *dev,
 	if (numberParameters >= 1) {
 		res = fts_enableInterrupt(false);
 		if (res < 0) {
-			pr_err("fts_enableInterrupt: ERROR %08X\n", res);
+			pr_debug("fts_enableInterrupt: ERROR %08X\n", res);
 			res = (res | ERROR_DISABLE_INTER);
 			goto END;
 		}
@@ -1912,7 +1912,7 @@ static ssize_t stm_fts_cmd_show(struct device *dev,
 		case 0x02:
 			if (systemInfo.u8_cfgAfeVer != systemInfo.u8_cxAfeVer) {
 				res = ERROR_OP_NOT_ALLOW;
-				pr_err("Miss match in CX version! MP test not allowed with wrong CX memory! ERROR %08X\n",
+				pr_debug("Miss match in CX version! MP test not allowed with wrong CX memory! ERROR %08X\n",
 					res);
 				break;
 			}
@@ -1923,17 +1923,17 @@ static ssize_t stm_fts_cmd_show(struct device *dev,
 #ifndef COMPUTE_INIT_METHOD
 			if (systemInfo.u8_cfgAfeVer != systemInfo.u8_cxAfeVer) {
 				res = ERROR_OP_NOT_ALLOW;
-				pr_err("Miss match in CX version! MP test not allowed with wrong CX memory! ERROR %08X\n",
+				pr_debug("Miss match in CX version! MP test not allowed with wrong CX memory! ERROR %08X\n",
 					res);
 				break;
 			}
 #else
 			if (systemInfo.u8_mpFlag != MP_FLAG_FACTORY) {
 				init_type = SPECIAL_FULL_PANEL_INIT;
-				pr_info("Select Full Panel Init!\n");
+				pr_debug("Select Full Panel Init!\n");
 			} else {
 				init_type = NO_INIT;
-				pr_info("Skip Full Panel Init!\n");
+				pr_debug("Skip Full Panel Init!\n");
 			}
 #endif
 			res = production_test_main(limits_file, 1, init_type,
@@ -1942,7 +1942,7 @@ static ssize_t stm_fts_cmd_show(struct device *dev,
 
 		/*read mutual raw*/
 		case 0x13:
-			pr_info("Get 1 MS Frame\n");
+			pr_debug("Get 1 MS Frame\n");
 			if (numberParameters >= 2 &&
 				typeOfCommand[1] == LOCKED_LP_ACTIVE)
 				setScanMode(SCAN_MODE_LOCKED, LOCKED_LP_ACTIVE);
@@ -1959,10 +1959,10 @@ static ssize_t stm_fts_cmd_show(struct device *dev,
 			flushFIFO();
 			res = getMSFrame3(MS_RAW, &frameMS);
 			if (res < 0) {
-				pr_err("Error while taking the MS frame... ERROR %08X\n",
+				pr_debug("Error while taking the MS frame... ERROR %08X\n",
 					res);
 			} else {
-				pr_info("The frame size is %d words\n",
+				pr_debug("The frame size is %d words\n",
 					res);
 #ifdef RAW_DATA_FORMAT_DEC
 				size += 3 * 2 +
@@ -1987,7 +1987,7 @@ static ssize_t stm_fts_cmd_show(struct device *dev,
 			break;
 		/*read self raw*/
 		case 0x15:
-			pr_info("Get 1 SS Frame\n");
+			pr_debug("Get 1 SS Frame\n");
 			if (numberParameters >= 2 &&
 				typeOfCommand[1] == LOCKED_LP_DETECT)
 				setScanMode(SCAN_MODE_LOCKED, LOCKED_LP_DETECT);
@@ -2009,10 +2009,10 @@ static ssize_t stm_fts_cmd_show(struct device *dev,
 				res = getSSFrame3(SS_RAW, &frameSS);
 
 			if (res < OK) {
-				pr_err("Error while taking the SS frame... ERROR %08X\n",
+				pr_debug("Error while taking the SS frame... ERROR %08X\n",
 					res);
 			} else {
-				pr_info("The frame size is %d words\n", res);
+				pr_debug("The frame size is %d words\n", res);
 #ifdef RAW_DATA_FORMAT_DEC
 				size += 3 * 2 + 5 +
 					(frameSS.header.sense_node +
@@ -2042,15 +2042,15 @@ static ssize_t stm_fts_cmd_show(struct device *dev,
 			break;
 
 		case 0x14:	/* read mutual comp data */
-			pr_info("Get MS Compensation Data\n");
+			pr_debug("Get MS Compensation Data\n");
 			res = readMutualSenseCompensationData(LOAD_CX_MS_TOUCH,
 							      &compData);
 
 			if (res < 0)
-				pr_err("Error reading MS compensation data ERROR %08X\n",
+				pr_debug("Error reading MS compensation data ERROR %08X\n",
 					res);
 			else {
-				pr_info("MS Compensation Data Reading Finished!\n");
+				pr_debug("MS Compensation Data Reading Finished!\n");
 				size += ((compData.node_data_size + 3) *
 					 sizeof(u8)) * 2;
 				print_frame_i8("MS Data (Cx2) =",
@@ -2066,14 +2066,14 @@ static ssize_t stm_fts_cmd_show(struct device *dev,
 			break;
 
 		case 0x16:	/* read self comp data */
-			pr_info("Get SS Compensation Data...\n");
+			pr_debug("Get SS Compensation Data...\n");
 			res = readSelfSenseCompensationData(LOAD_CX_SS_TOUCH,
 							    &comData);
 			if (res < 0)
-				pr_err("Error reading SS compensation data ERROR %08X\n",
+				pr_debug("Error reading SS compensation data ERROR %08X\n",
 					res);
 			else {
-				pr_info("SS Compensation Data Reading Finished!\n");
+				pr_debug("SS Compensation Data Reading Finished!\n");
 				size += ((comData.header.force_node +
 					  comData.header.sense_node) * 2 + 8) *
 					sizeof(u8) * 2;
@@ -2104,7 +2104,7 @@ static ssize_t stm_fts_cmd_show(struct device *dev,
 			}
 			break;
 		case 0x17:	/* Read mutual strength */
-			pr_info("Get 1 MS Strength\n");
+			pr_debug("Get 1 MS Strength\n");
 			setScanMode(SCAN_MODE_ACTIVE, 0xFF);
 			msleep(WAIT_FOR_FRESH_FRAMES);
 			setScanMode(SCAN_MODE_ACTIVE, 0x00);
@@ -2114,10 +2114,10 @@ static ssize_t stm_fts_cmd_show(struct device *dev,
 			nodes = getMSFrame3(MS_STRENGTH, &frameMS);
 			if (nodes < 0) {
 				res = nodes;
-				pr_err("Error while taking the MS strength... ERROR %08X\n",
+				pr_debug("Error while taking the MS strength... ERROR %08X\n",
 					res);
 			} else {
-				pr_info("The frame size is %d words\n", nodes);
+				pr_debug("The frame size is %d words\n", nodes);
 #ifdef RAW_DATA_FORMAT_DEC
 				size += 3 * 2 +
 				    (7 * frameMS.header.sense_node + 1)
@@ -2170,7 +2170,7 @@ static ssize_t stm_fts_cmd_show(struct device *dev,
 			break;
 
 		default:
-			pr_err("COMMAND NOT VALID!! Insert a proper value ...\n");
+			pr_debug("COMMAND NOT VALID!! Insert a proper value ...\n");
 			res = ERROR_OP_NOT_ALLOW;
 			break;
 		}
@@ -2179,10 +2179,10 @@ static ssize_t stm_fts_cmd_show(struct device *dev,
 		if (typeOfCommand[0] != 0xF0)
 			doClean |= fts_enableInterrupt(true);
 		if (doClean < 0)
-			pr_err("%s: ERROR %08X\n", __func__,
+			pr_debug("%s: ERROR %08X\n", __func__,
 				 (doClean | ERROR_ENABLE_INTER));
 	} else {
-		pr_err("NO COMMAND SPECIFIED!!! do: 'echo [cmd_code] [args] > stm_fts_cmd' before looking for result!\n");
+		pr_debug("NO COMMAND SPECIFIED!!! do: 'echo [cmd_code] [args] > stm_fts_cmd' before looking for result!\n");
 		res = ERROR_OP_NOT_ALLOW;
 	}
 
@@ -2408,7 +2408,7 @@ END:
 	/* need to reset the number of parameters in order to wait the
 	  * next command, comment if you want to repeat the last command sent
 	  * just doing a cat */
-	/* pr_err("numberParameters = %d\n", numberParameters); */
+	/* pr_debug("numberParameters = %d\n", numberParameters); */
 
 	fts_set_bus_ref(info, FTS_BUS_REF_SYSFS, false);
 	mutex_unlock(&info->diag_cmd_lock);
@@ -2653,7 +2653,7 @@ static ssize_t fts_heatmap_mode_store(struct device *dev,
 
 	result = kstrtoint(buf, 10, &val);
 	if (result < 0 || val < FTS_HEATMAP_OFF || val > FTS_HEATMAP_FULL) {
-		pr_err("%s: Invalid input.\n", __func__);
+		pr_debug("%s: Invalid input.\n", __func__);
 		return -EINVAL;
 	}
 
@@ -2816,7 +2816,7 @@ void fts_input_report_key(struct fts_ts_info *info, int key_code)
 static bool fts_nop_event_handler(struct fts_ts_info *info, unsigned
 				  char *event)
 {
-	pr_info("%s: Doing nothing for event = %02X %02X %02X %02X %02X %02X %02X %02X\n",
+	pr_debug("%s: Doing nothing for event = %02X %02X %02X %02X %02X %02X %02X %02X\n",
 		__func__, event[0], event[1], event[2], event[3],
 		event[4],
 		event[5], event[6], event[7]);
@@ -2874,7 +2874,7 @@ static bool fts_enter_pointer_event_handler(struct fts_ts_info *info, unsigned
 	switch (touchType) {
 #ifdef STYLUS_MODE
 	case TOUCH_TYPE_STYLUS:
-		pr_info("%s : It is a stylus!\n", __func__);
+		pr_debug("%s : It is a stylus!\n", __func__);
 		if (info->stylus_enabled == 1) {
 			/* if stylus_enabled is not ==1
 			  * it will be reported as normal touch */
@@ -2906,7 +2906,7 @@ static bool fts_enter_pointer_event_handler(struct fts_ts_info *info, unsigned
 		break;
 
 	default:
-		pr_err("%s : Invalid touch type = %d ! No Report...\n",
+		pr_debug("%s : Invalid touch type = %d ! No Report...\n",
 			__func__, touchType);
 		goto no_report;
 	}
@@ -2914,7 +2914,7 @@ static bool fts_enter_pointer_event_handler(struct fts_ts_info *info, unsigned
 	input_report_key(info->input_dev, BTN_TOUCH, touch_condition);
 	input_mt_report_slot_state(info->input_dev, tool, 1);
 
-	/* pr_info("%s : TouchID = %d,Touchcount = %d\n", __func__,
+	/* pr_debug("%s : TouchID = %d,Touchcount = %d\n", __func__,
 	  *	touchId,touchcount); */
 
 	input_report_abs(info->input_dev, ABS_MT_POSITION_X, x);
@@ -2928,7 +2928,7 @@ static bool fts_enter_pointer_event_handler(struct fts_ts_info *info, unsigned
 #ifndef SKIP_DISTANCE
 	input_report_abs(info->input_dev, ABS_MT_DISTANCE, distance);
 #endif
-	/* pr_info("%s :  Event 0x%02x - ID[%d], (x, y) = (%3d, %3d)
+	/* pr_debug("%s :  Event 0x%02x - ID[%d], (x, y) = (%3d, %3d)
 	 * Size = %d\n",
 	  *	__func__, *event, touchId, x, y, touchType); */
 
@@ -2957,7 +2957,7 @@ static bool fts_leave_pointer_event_handler(struct fts_ts_info *info, unsigned
 	switch (touchType) {
 #ifdef STYLUS_MODE
 	case TOUCH_TYPE_STYLUS:
-		pr_info("%s : It is a stylus!\n", __func__);
+		pr_debug("%s : It is a stylus!\n", __func__);
 		if (info->stylus_enabled == 1) {
 			/* if stylus_enabled is not ==1 it will be reported as
 			 * normal touch */
@@ -2968,30 +2968,30 @@ static bool fts_leave_pointer_event_handler(struct fts_ts_info *info, unsigned
 #endif
 
 	case TOUCH_TYPE_FINGER:
-	/* pr_info("%s : It is a finger!\n", __func__); */
+	/* pr_debug("%s : It is a finger!\n", __func__); */
 	case TOUCH_TYPE_GLOVE:
-	/* pr_info("%s : It is a glove!\n", __func__); */
+	/* pr_debug("%s : It is a glove!\n", __func__); */
 	case TOUCH_TYPE_PALM:
-	/* pr_info("%s : It is a palm!\n", __func__); */
+	/* pr_debug("%s : It is a palm!\n", __func__); */
 	case TOUCH_TYPE_HOVER:
 		tool = MT_TOOL_FINGER;
 		__clear_bit(touchId, &info->touch_id);
 		break;
 
 	default:
-		pr_err("%s : Invalid touch type = %d ! No Report...\n",
+		pr_debug("%s : Invalid touch type = %d ! No Report...\n",
 			__func__, touchType);
 		return false;
 	}
 
 	input_mt_report_slot_state(info->input_dev, tool, 0);
 
-	/* pr_info("%s : TouchID = %d, Touchcount = %d\n", __func__,
+	/* pr_debug("%s : TouchID = %d, Touchcount = %d\n", __func__,
 	 *	touchId,touchcount); */
 
 
 	input_report_abs(info->input_dev, ABS_MT_TRACKING_ID, -1);
-	/* pr_info("%s : Event 0x%02x - release ID[%d]\n", __func__,
+	/* pr_debug("%s : Event 0x%02x - release ID[%d]\n", __func__,
 	 *	event[0], touchId); */
 	return true;
 }
@@ -3011,7 +3011,7 @@ static bool fts_error_event_handler(struct fts_ts_info *info, unsigned
 {
 	int error = 0;
 
-	pr_info("%s: Received event %02X %02X %02X %02X %02X %02X %02X %02X\n",
+	pr_debug("%s: Received event %02X %02X %02X %02X %02X %02X %02X %02X\n",
 		 __func__, event[0], event[1], event[2], event[3], event[4],
 		 event[5],
 		 event[6], event[7]);
@@ -3027,7 +3027,7 @@ static bool fts_error_event_handler(struct fts_ts_info *info, unsigned
 		error |= fts_mode_handler(info, 0);
 		error |= fts_enableInterrupt(true);
 		if (error < OK)
-			pr_err("%s Cannot restore the device ERROR %08X\n",
+			pr_debug("%s Cannot restore the device ERROR %08X\n",
 				__func__, error);
 	}
 	break;
@@ -3041,7 +3041,7 @@ static bool fts_error_event_handler(struct fts_ts_info *info, unsigned
 		error |= fts_mode_handler(info, 0);
 		error |= fts_enableInterrupt(true);
 		if (error < OK)
-			pr_err("%s Cannot reset the device ERROR %08X\n",
+			pr_debug("%s Cannot reset the device ERROR %08X\n",
 				__func__, error);
 	}
 	break;
@@ -3059,7 +3059,7 @@ static bool fts_controller_ready_event_handler(struct fts_ts_info *info,
 {
 	int error;
 
-	pr_info("%s: Received event %02X %02X %02X %02X %02X %02X %02X %02X\n",
+	pr_debug("%s: Received event %02X %02X %02X %02X %02X %02X %02X %02X\n",
 		__func__, event[0], event[1], event[2], event[3], event[4],
 		event[5], event[6], event[7]);
 	release_all_touches(info);
@@ -3067,7 +3067,7 @@ static bool fts_controller_ready_event_handler(struct fts_ts_info *info,
 	setSystemResetedDown(1);
 	error = fts_mode_handler(info, 0);
 	if (error < OK)
-		pr_err("%s Cannot restore the device status ERROR %08X\n",
+		pr_debug("%s Cannot restore the device status ERROR %08X\n",
 			__func__, error);
 	return false;
 }
@@ -3089,7 +3089,7 @@ static bool fts_status_event_handler(struct fts_ts_info *info, unsigned
 		break;
 
 	case EVT_TYPE_STATUS_GPIO_CHAR_DET:
-		pr_info("%s: GPIO Charger Detect ="
+		pr_debug("%s: GPIO Charger Detect ="
 			" %02X %02X %02X %02X %02X %02X\n",
 			__func__, event[2], event[3], event[4], event[5],
 			event[6], event[7]);
@@ -3098,123 +3098,123 @@ static bool fts_status_event_handler(struct fts_ts_info *info, unsigned
 	case EVT_TYPE_STATUS_FORCE_CAL:
 		switch (event[2]) {
 		case 0x01:
-			pr_info("%s: Sense on Force cal = %02X %02X"
+			pr_debug("%s: Sense on Force cal = %02X %02X"
 				" %02X %02X %02X %02X\n",
 				__func__, event[2], event[3], event[4],
 				event[5], event[6], event[7]);
 			break;
 
 		case 0x02:
-			pr_info("%s: Host command Force cal = %02X %02X"
+			pr_debug("%s: Host command Force cal = %02X %02X"
 				" %02X %02X %02X %02X\n",
 				__func__, event[2], event[3], event[4],
 				event[5], event[6], event[7]);
 			break;
 
 		case 0x10:
-			pr_info("%s: Mutual frame drop Force cal = %02X %02X"
+			pr_debug("%s: Mutual frame drop Force cal = %02X %02X"
 			" %02X %02X %02X %02X\n",
 				__func__, event[2], event[3], event[4],
 				event[5], event[6], event[7]);
 			break;
 
 		case 0x11:
-			pr_info("%s: Mutual pure raw Force cal = %02X %02X"
+			pr_debug("%s: Mutual pure raw Force cal = %02X %02X"
 			" %02X %02X %02X %02X\n",
 				__func__, event[2], event[3], event[4],
 				event[5], event[6], event[7]);
 			break;
 
 		case 0x20:
-			pr_info("%s: Self detect negative Force cal = %02X"
+			pr_debug("%s: Self detect negative Force cal = %02X"
 			" %02X %02X %02X %02X %02X\n",
 				__func__, event[2], event[3], event[4],
 				event[5], event[6], event[7]);
 			break;
 
 		case 0x21:
-			pr_info("%s: Self touch negative Force cal = %02X"
+			pr_debug("%s: Self touch negative Force cal = %02X"
 			" %02X %02X %02X %02X %02X\n",
 				__func__, event[2], event[3], event[4],
 				event[5], event[6], event[7]);
 			break;
 
 		case 0x22:
-			pr_info("%s: Self detect frame flatness Force cal ="
+			pr_debug("%s: Self detect frame flatness Force cal ="
 			" %02X %02X %02X %02X %02X %02X\n",
 				__func__, event[2], event[3], event[4],
 				event[5], event[6], event[7]);
 			break;
 
 		case 0x23:
-			pr_info("%s: Self touch frame flatness Force cal ="
+			pr_debug("%s: Self touch frame flatness Force cal ="
 			" %02X %02X %02X %02X %02X %02X\n",
 				__func__, event[2], event[3], event[4],
 				event[5], event[6], event[7]);
 			break;
 
 		case 0x30:
-			pr_info("%s: Invalid mutual Force cal = %02X"
+			pr_debug("%s: Invalid mutual Force cal = %02X"
 			" %02X %02X %02X %02X %02X\n",
 				__func__, event[2], event[3], event[4],
 				event[5], event[6], event[7]);
 			break;
 
 		case 0x31:
-			pr_info("%s: Invalid differential mutual Force cal ="
+			pr_debug("%s: Invalid differential mutual Force cal ="
 			" %02X %02X %02X %02X %02X %02X\n",
 				__func__, event[2], event[3], event[4],
 				event[5], event[6], event[7]);
 			break;
 
 		case 0x32:
-			pr_info("%s: Invalid Self Force cal = %02X"
+			pr_debug("%s: Invalid Self Force cal = %02X"
 			" %02X %02X %02X %02X %02X\n",
 				__func__, event[2], event[3], event[4],
 				event[5], event[6], event[7]);
 			break;
 
 		case 0x33:
-			pr_info("%s: Invalid Self island Force cal = %02X"
+			pr_debug("%s: Invalid Self island Force cal = %02X"
 			" %02X %02X %02X %02X %02X\n",
 				__func__, event[2], event[3], event[4],
 				event[5], event[6], event[7]);
 			break;
 
 		case 0x34:
-			pr_info("%s: Invalid Self force touch Force cal ="
+			pr_debug("%s: Invalid Self force touch Force cal ="
 			" %02X %02X %02X %02X %02X %02X\n",
 				__func__, event[2], event[3], event[4],
 				event[5], event[6], event[7]);
 			break;
 
 		case 0x35:
-			pr_info("%s: Mutual frame flatness Force cal ="
+			pr_debug("%s: Mutual frame flatness Force cal ="
 			" %02X %02X %02X %02X %02X %02X\n",
 				__func__, event[2], event[3], event[4],
 				event[5], event[6], event[7]);
 			break;
 
 		default:
-			pr_info("%s: Unknown force cal = %02X %02X %02X %02X %02X %02X\n",
+			pr_debug("%s: Unknown force cal = %02X %02X %02X %02X %02X %02X\n",
 				__func__, event[2], event[3], event[4],
 				event[5], event[6], event[7]);
 		}
 		break;
 
 	case EVT_TYPE_STATUS_FRAME_DROP:
-			pr_info("%s: Frame drop = %02X %02X %02X %02X %02X %02X\n",
+			pr_debug("%s: Frame drop = %02X %02X %02X %02X %02X %02X\n",
 				__func__, event[2], event[3], event[4],
 				event[5], event[6], event[7]);
 		break;
 
 	case EVT_TYPE_STATUS_SS_RAW_SAT:
 		if (event[2] == 1)
-			pr_info("%s: SS Raw Saturated = %02X %02X %02X %02X %02X %02X\n",
+			pr_debug("%s: SS Raw Saturated = %02X %02X %02X %02X %02X %02X\n",
 				__func__, event[2], event[3], event[4],
 				event[5], event[6], event[7]);
 		else
-			pr_info("%s: SS Raw No more Saturated = %02X %02X %02X %02X %02X %02X\n",
+			pr_debug("%s: SS Raw No more Saturated = %02X %02X %02X %02X %02X %02X\n",
 				__func__, event[2], event[3], event[4],
 				event[5], event[6], event[7]);
 		break;
@@ -3222,49 +3222,49 @@ static bool fts_status_event_handler(struct fts_ts_info *info, unsigned
 	case EVT_TYPE_STATUS_WATER:
 		switch (event[2]) {
 		case 0x00:
-			pr_info("%s: Water Mode Entry by BLD with real"
+			pr_debug("%s: Water Mode Entry by BLD with real"
 				" raw frame = %02X %02X %02X %02X %02X %02X\n",
 				__func__, event[2], event[3], event[4],
 				event[5], event[6], event[7]);
 			break;
 
 		case 0x01:
-			pr_info("%s: Water Mode Entry by BLD with rom"
+			pr_debug("%s: Water Mode Entry by BLD with rom"
 				" raw frame = %02X %02X %02X %02X %02X %02X\n",
 				__func__, event[2], event[3], event[4],
 				event[5], event[6], event[7]);
 			break;
 
 		case 0x02:
-			pr_info("%s: Water Mode Entry by MID with real"
+			pr_debug("%s: Water Mode Entry by MID with real"
 				" raw frame = %02X %02X %02X %02X %02X %02X\n",
 				__func__, event[2], event[3], event[4],
 				event[5], event[6], event[7]);
 			break;
 
 		case 0x03:
-			pr_info("%s: Water Mode leave by BLD with real"
+			pr_debug("%s: Water Mode leave by BLD with real"
 				" raw frame = %02X %02X %02X %02X %02X %02X\n",
 				__func__, event[2], event[3], event[4],
 				event[5], event[6], event[7]);
 			break;
 
 		case 0x04:
-			pr_info("%s: Water Mode leave by BLD with rom"
+			pr_debug("%s: Water Mode leave by BLD with rom"
 				" raw frame = %02X %02X %02X %02X %02X %02X\n",
 				__func__, event[2], event[3], event[4],
 				event[5], event[6], event[7]);
 			break;
 
 		case 0x05:
-			pr_info("%s: Water Mode leave by MID with real"
+			pr_debug("%s: Water Mode leave by MID with real"
 				" raw frame = %02X %02X %02X %02X %02X %02X\n",
 				__func__, event[2], event[3], event[4],
 				event[5], event[6], event[7]);
 			break;
 
 		default:
-			pr_info("%s: Unknown water mode = %02X %02X %02X %02X %02X %02X\n",
+			pr_debug("%s: Unknown water mode = %02X %02X %02X %02X %02X %02X\n",
 				__func__, event[2], event[3], event[4],
 				event[5], event[6], event[7]);
 		}
@@ -3272,12 +3272,12 @@ static bool fts_status_event_handler(struct fts_ts_info *info, unsigned
 
 	case EVT_TYPE_STATUS_PRE_WAT_DET:
 		if (event[2] == 1)
-			pr_info("%s: Previous Water entry ="
+			pr_debug("%s: Previous Water entry ="
 			" %02X %02X %02X %02X %02X %02X\n",
 				__func__, event[2], event[3], event[4],
 				event[5], event[6], event[7]);
 		else
-			pr_info("%s: Previous Water leave ="
+			pr_debug("%s: Previous Water leave ="
 				" %02X %02X %02X %02X %02X %02X\n",
 				__func__, event[2], event[3], event[4],
 				event[5], event[6], event[7]);
@@ -3327,14 +3327,14 @@ static bool fts_status_event_handler(struct fts_ts_info *info, unsigned
 		break;
 
 	case EVT_TYPE_STATUS_NO_TOUCH:
-		pr_info("%s: No Touch Status Event = %02X %02X"
+		pr_debug("%s: No Touch Status Event = %02X %02X"
 		" %02X %02X %02X %02X\n",
 			__func__, event[2], event[3], event[4], event[5],
 			event[6], event[7]);
 		break;
 
 	case EVT_TYPE_STATUS_IDLE:
-		pr_info("%s: Idle Status Event = %02X %02X"
+		pr_debug("%s: Idle Status Event = %02X %02X"
 		" %02X %02X %02X %02X\n",
 			__func__, event[2], event[3], event[4], event[5],
 			event[6], event[7]);
@@ -3343,21 +3343,21 @@ static bool fts_status_event_handler(struct fts_ts_info *info, unsigned
 	case EVT_TYPE_STATUS_PALM_TOUCH:
 		switch (event[2]) {
 		case 0x01:
-			pr_info("%s: Palm block entry event"
+			pr_debug("%s: Palm block entry event"
 				" = %02X %02X %02X %02X %02X %02X\n",
 				__func__, event[2], event[3], event[4],
 				event[5], event[6], event[7]);
 			break;
 
 		case 0x02:
-			pr_info("%s: Palm block release event"
+			pr_debug("%s: Palm block release event"
 				" = %02X %02X %02X %02X %02X %02X\n",
 				__func__, event[2], event[3], event[4],
 				event[5], event[6], event[7]);
 			break;
 
 		default:
-			pr_info("%s: Unknown palm touch status = %02X %02X %02X %02X %02X %02X\n",
+			pr_debug("%s: Unknown palm touch status = %02X %02X %02X %02X %02X %02X\n",
 				__func__, event[2], event[3], event[4],
 				event[5], event[6], event[7]);
 		}
@@ -3367,21 +3367,21 @@ static bool fts_status_event_handler(struct fts_ts_info *info, unsigned
 		grid_touch_status = (event[2] & 0xF0) >> 4;
 		switch (grid_touch_status) {
 		case 0x01:
-			pr_info("%s: Grip Touch entry event"
+			pr_debug("%s: Grip Touch entry event"
 				" = %02X %02X %02X %02X %02X %02X\n",
 				__func__, event[2], event[3], event[4],
 				event[5], event[6], event[7]);
 			break;
 
 		case 0x02:
-			pr_info("%s: Grip Touch release event"
+			pr_debug("%s: Grip Touch release event"
 				" = %02X %02X %02X %02X %02X %02X\n",
 				__func__, event[2], event[3], event[4],
 				event[5], event[6], event[7]);
 			break;
 
 		default:
-			pr_info("%s: Unknown grip touch status = %02X %02X %02X %02X %02X %02X\n",
+			pr_debug("%s: Unknown grip touch status = %02X %02X %02X %02X %02X %02X\n",
 				__func__, event[2], event[3], event[4],
 				event[5], event[6], event[7]);
 		}
@@ -3390,28 +3390,28 @@ static bool fts_status_event_handler(struct fts_ts_info *info, unsigned
 	case EVT_TYPE_STATUS_GOLDEN_RAW_VAL:
 		switch (event[2]) {
 		case 0x01:
-			pr_info("%s: Golden Raw Validation Pass"
+			pr_debug("%s: Golden Raw Validation Pass"
 				" = %02X %02X %02X %02X %02X %02X\n",
 				__func__, event[2], event[3], event[4],
 				event[5], event[6], event[7]);
 			break;
 
 		case 0x02:
-			pr_info("%s: Golden Raw Validation Fail"
+			pr_debug("%s: Golden Raw Validation Fail"
 				" = %02X %02X %02X %02X %02X %02X\n",
 				__func__, event[2], event[3], event[4],
 				event[5], event[6], event[7]);
 			break;
 
 		default:
-			pr_info("%s: Unknown golden raw validation status = %02X %02X %02X %02X %02X %02X\n",
+			pr_debug("%s: Unknown golden raw validation status = %02X %02X %02X %02X %02X %02X\n",
 				__func__, event[2], event[3], event[4],
 				event[5], event[6], event[7]);
 		}
 		break;
 
 	default:
-		pr_info("%s: Received unknown status event = %02X %02X %02X %02X %02X %02X %02X %02X\n",
+		pr_debug("%s: Received unknown status event = %02X %02X %02X %02X %02X %02X %02X %02X\n",
 			__func__, event[0], event[1], event[2], event[3],
 			event[4], event[5], event[6], event[7]);
 		break;
@@ -3435,7 +3435,7 @@ static void fts_key_event_handler(struct fts_ts_info *info,
 				  unsigned char *event)
 {
 	/* int value; */
-	pr_info("%s: Received event %02X %02X %02X %02X %02X %02X %02X %02X\n",
+	pr_debug("%s: Received event %02X %02X %02X %02X %02X %02X %02X %02X\n",
 		__func__, event[0], event[1], event[2], event[3], event[4],
 		event[5], event[6], event[7]);
 
@@ -3444,25 +3444,25 @@ static void fts_key_event_handler(struct fts_ts_info *info,
 		 * pressed */
 
 		if ((event[2] & FTS_KEY_0) == 0 && (key_mask & FTS_KEY_0) > 0) {
-			pr_info("%s: Button HOME pressed and released!\n",
+			pr_debug("%s: Button HOME pressed and released!\n",
 				__func__);
 			fts_input_report_key(info, KEY_HOMEPAGE);
 		}
 
 		if ((event[2] & FTS_KEY_1) == 0 && (key_mask & FTS_KEY_1) > 0) {
-			pr_info("%s: Button Back pressed and released!\n",
+			pr_debug("%s: Button Back pressed and released!\n",
 				__func__);
 			fts_input_report_key(info, KEY_BACK);
 		}
 
 		if ((event[2] & FTS_KEY_2) == 0 && (key_mask & FTS_KEY_2) > 0) {
-			pr_info("%s: Button Menu pressed!\n", __func__);
+			pr_debug("%s: Button Menu pressed!\n", __func__);
 			fts_input_report_key(info, KEY_MENU);
 		}
 
 		key_mask = event[2];
 	} else
-		pr_err("%s: Invalid event passed as argument!\n", __func__);
+		pr_debug("%s: Invalid event passed as argument!\n", __func__);
 }
 #endif
 
@@ -3483,7 +3483,7 @@ static void fts_gesture_event_handler(struct fts_ts_info *info, unsigned
 	int value;
 	int needCoords = 0;
 
-	pr_info("gesture event data: %02X %02X %02X %02X %02X %02X %02X %02X\n",
+	pr_debug("gesture event data: %02X %02X %02X %02X %02X %02X %02X %02X\n",
 		event[0], event[1], event[2], event[3], event[4],
 		event[5], event[6], event[7]);
 
@@ -3496,102 +3496,102 @@ static void fts_gesture_event_handler(struct fts_ts_info *info, unsigned
 		switch (event[2]) {
 		case GEST_ID_DBLTAP:
 			value = KEY_WAKEUP;
-			pr_info("%s: double tap !\n", __func__);
+			pr_debug("%s: double tap !\n", __func__);
 			needCoords = 0;
 			break;
 
 		case GEST_ID_AT:
 			value = KEY_WWW;
-			pr_info("%s: @ !\n", __func__);
+			pr_debug("%s: @ !\n", __func__);
 			break;
 
 		case GEST_ID_C:
 			value = KEY_C;
-			pr_info("%s: C !\n", __func__);
+			pr_debug("%s: C !\n", __func__);
 			break;
 
 		case GEST_ID_E:
 			value = KEY_E;
-			pr_info("%s: e !\n", __func__);
+			pr_debug("%s: e !\n", __func__);
 			break;
 
 		case GEST_ID_F:
 			value = KEY_F;
-			pr_info("%s: F !\n", __func__);
+			pr_debug("%s: F !\n", __func__);
 			break;
 
 		case GEST_ID_L:
 			value = KEY_L;
-			pr_info("%s: L !\n", __func__);
+			pr_debug("%s: L !\n", __func__);
 			break;
 
 		case GEST_ID_M:
 			value = KEY_M;
-			pr_info("%s: M !\n", __func__);
+			pr_debug("%s: M !\n", __func__);
 			break;
 
 		case GEST_ID_O:
 			value = KEY_O;
-			pr_info("%s: O !\n", __func__);
+			pr_debug("%s: O !\n", __func__);
 			break;
 
 		case GEST_ID_S:
 			value = KEY_S;
-			pr_info("%s: S !\n", __func__);
+			pr_debug("%s: S !\n", __func__);
 			break;
 
 		case GEST_ID_V:
 			value = KEY_V;
-			pr_info("%s:  V !\n", __func__);
+			pr_debug("%s:  V !\n", __func__);
 			break;
 
 		case GEST_ID_W:
 			value = KEY_W;
-			pr_info("%s:  W !\n", __func__);
+			pr_debug("%s:  W !\n", __func__);
 			break;
 
 		case GEST_ID_Z:
 			value = KEY_Z;
-			pr_info("%s:  Z !\n", __func__);
+			pr_debug("%s:  Z !\n", __func__);
 			break;
 
 		case GEST_ID_RIGHT_1F:
 			value = KEY_RIGHT;
-			pr_info("%s:  -> !\n", __func__);
+			pr_debug("%s:  -> !\n", __func__);
 			break;
 
 		case GEST_ID_LEFT_1F:
 			value = KEY_LEFT;
-			pr_info("%s:  <- !\n", __func__);
+			pr_debug("%s:  <- !\n", __func__);
 			break;
 
 		case GEST_ID_UP_1F:
 			value = KEY_UP;
-			pr_info("%s:  UP !\n", __func__);
+			pr_debug("%s:  UP !\n", __func__);
 			break;
 
 		case GEST_ID_DOWN_1F:
 			value = KEY_DOWN;
-			pr_info("%s:  DOWN !\n", __func__);
+			pr_debug("%s:  DOWN !\n", __func__);
 			break;
 
 		case GEST_ID_CARET:
 			value = KEY_APOSTROPHE;
-			pr_info("%s:  ^ !\n", __func__);
+			pr_debug("%s:  ^ !\n", __func__);
 			break;
 
 		case GEST_ID_LEFTBRACE:
 			value = KEY_LEFTBRACE;
-			pr_info("%s:  < !\n", __func__);
+			pr_debug("%s:  < !\n", __func__);
 			break;
 
 		case GEST_ID_RIGHTBRACE:
 			value = KEY_RIGHTBRACE;
-			pr_info("%s:  > !\n", __func__);
+			pr_debug("%s:  > !\n", __func__);
 			break;
 
 		default:
-			pr_err("%s:  No valid GestureID!\n", __func__);
+			pr_debug("%s:  No valid GestureID!\n", __func__);
 			goto gesture_done;
 		}
 
@@ -3603,7 +3603,7 @@ static void fts_gesture_event_handler(struct fts_ts_info *info, unsigned
 gesture_done:
 		return;
 	} else
-		pr_err("%s: Invalid event passed as argument!\n", __func__);
+		pr_debug("%s: Invalid event passed as argument!\n", __func__);
 }
 #endif
 
@@ -3625,9 +3625,9 @@ static bool fts_user_report_event_handler(struct fts_ts_info *info, unsigned
 
 	case EVT_TYPE_USER_PROXIMITY:
 		if (event[2] == 0)
-			pr_err("%s No proximity!\n", __func__);
+			pr_debug("%s No proximity!\n", __func__);
 		else
-			pr_err("%s Proximity Detected!\n", __func__);
+			pr_debug("%s Proximity Detected!\n", __func__);
 		break;
 
 #ifdef GESTURE_MODE
@@ -3636,7 +3636,7 @@ static bool fts_user_report_event_handler(struct fts_ts_info *info, unsigned
 		break;
 #endif
 	default:
-		pr_err("%s: Received unhandled user report event = %02X %02X %02X %02X %02X %02X %02X %02X\n",
+		pr_debug("%s: Received unhandled user report event = %02X %02X %02X %02X %02X %02X %02X %02X\n",
 			__func__, event[0], event[1], event[2], event[3],
 			event[4], event[5], event[6], event[7]);
 		break;
@@ -3648,7 +3648,7 @@ static void heatmap_enable(void)
 {
 	u8 command[] = {FTS_CMD_SYSTEM, SYS_CMD_LOAD_DATA,
 					LOCAL_HEATMAP_MODE};
-	pr_info("%s\n", __func__);
+	pr_debug("%s\n", __func__);
 	fts_write(command, ARRAY_SIZE(command));
 }
 
@@ -3680,12 +3680,12 @@ static bool read_heatmap_raw(struct v4l2_heatmap *v4l2, strength_t *data)
 					   ADDR_FRAMEBUFFER, (uint8_t *)&report,
 					   sizeof(report), DUMMY_FRAMEBUFFER);
 		if (result != OK) {
-			pr_err("%s: i2c read failed, fts_writeRead returned %i",
+			pr_debug("%s: i2c read failed, fts_writeRead returned %i",
 				__func__, result);
 			return false;
 		}
 		if (report.mode != LOCAL_HEATMAP_MODE) {
-			pr_err("Touch IC not in local heatmap mode: %X %X %i",
+			pr_debug("Touch IC not in local heatmap mode: %X %X %i",
 				report.prefix, report.mode, report.counter);
 			heatmap_enable();
 			return false;
@@ -3702,13 +3702,13 @@ static bool read_heatmap_raw(struct v4l2_heatmap *v4l2, strength_t *data)
 			 * handler.
 			 */
 			if (info->mf_state != FTS_MF_UNFILTERED)
-				pr_warn("Heatmap frame has stale counter value %i",
+				pr_debug("Heatmap frame has stale counter value %i",
 					counter);
 		}
 		counter = report.counter;
 		num_elements = report.size_x * report.size_y;
 		if (num_elements > LOCAL_HEATMAP_WIDTH * LOCAL_HEATMAP_HEIGHT) {
-			pr_err("Unexpected heatmap size: %i x %i",
+			pr_debug("Unexpected heatmap size: %i x %i",
 					report.size_x, report.size_y);
 			return false;
 		}
@@ -3733,7 +3733,7 @@ static bool read_heatmap_raw(struct v4l2_heatmap *v4l2, strength_t *data)
 
 			if (heatmap_x < 0 || heatmap_x >= max_x ||
 			    heatmap_y < 0 || heatmap_y >= max_y) {
-				pr_err("Invalid x or y: (%i, %i), value=%i, ending loop\n",
+				pr_debug("Invalid x or y: (%i, %i), value=%i, ending loop\n",
 				       heatmap_x, heatmap_y, heatmap_value);
 				return false;
 			}
@@ -3746,7 +3746,7 @@ static bool read_heatmap_raw(struct v4l2_heatmap *v4l2, strength_t *data)
 
 		result = getMSFrame3(MS_STRENGTH, &ms_frame);
 		if (result <= 0) {
-			pr_err("getMSFrame3 failed with result=0x%08X.\n",
+			pr_debug("getMSFrame3 failed with result=0x%08X.\n",
 			       result);
 			return false;
 		}
@@ -3882,7 +3882,7 @@ static irqreturn_t fts_interrupt_handler(int irq, void *handle)
 					  DUMMY_FIFO);
 	}
 	if (error != OK) {
-		pr_err("Error (%08X) while reading from FIFO in fts_event_handler\n",
+		pr_debug("Error (%08X) while reading from FIFO in fts_event_handler\n",
 			error);
 	} else {
 		for (count = 0; count < events_remaining + 1; count++) {
@@ -3963,13 +3963,13 @@ static int fts_read_panel_extinfo(struct fts_ts_info *info, int wait_seconds)
 		return 0;
 	} else if (len < 0) {
 		ret = len;
-		pr_err("%s: dsi_panel_read_vendor_extinfo returned unexpected error = %d.\n",
+		pr_debug("%s: dsi_panel_read_vendor_extinfo returned unexpected error = %d.\n",
 		       __func__, ret);
 		goto error;
 	} else {
 		info->extinfo.data = kzalloc(len, GFP_KERNEL);
 		if (!info->extinfo.data) {
-			pr_err("%s: failed to allocate extinfo. len=%d.\n",
+			pr_debug("%s: failed to allocate extinfo. len=%d.\n",
 			       __func__, len);
 			ret = -ENOMEM;
 			goto error;
@@ -3993,7 +3993,7 @@ static int fts_read_panel_extinfo(struct fts_ts_info *info, int wait_seconds)
 				 wait_seconds - (retries / RETRIES_PER_S));
 			return 0;
 		} else {
-			pr_err("%s: dsi_panel_read_vendor_extinfo returned error = %d\n",
+			pr_debug("%s: dsi_panel_read_vendor_extinfo returned error = %d\n",
 			       __func__, len);
 			ret = len;
 			goto error;
@@ -4001,7 +4001,7 @@ static int fts_read_panel_extinfo(struct fts_ts_info *info, int wait_seconds)
 	} while (--retries > 0);
 
 	/* Time out after retrying for wait_seconds */
-	pr_err("%s: Timed out after waiting %d seconds.\n", __func__,
+	pr_debug("%s: Timed out after waiting %d seconds.\n", __func__,
 	       wait_seconds);
 	ret = -EBUSY;
 
@@ -4042,7 +4042,7 @@ static int fts_identify_panel(struct fts_ts_info *info)
 		/* Extinfo was not read. Attempt one read before aborting */
 		ret = fts_read_panel_extinfo(info, 0);
 		if (ret < 0) {
-			pr_err("%s: fts_read_panel_extinfo failed with ret=%d.\n",
+			pr_debug("%s: fts_read_panel_extinfo failed with ret=%d.\n",
 			       __func__, ret);
 			return ret;
 		}
@@ -4085,7 +4085,7 @@ static int fts_identify_panel(struct fts_ts_info *info)
 			if (panel_index != filter_panel_index)
 				continue;
 			else if (filter_extinfo_index >= info->extinfo.size) {
-				pr_err("%s: extinfo index is out of bounds (%d >= %d) in row %d of extinfo_override_table.\n",
+				pr_debug("%s: extinfo index is out of bounds (%d >= %d) in row %d of extinfo_override_table.\n",
 				       __func__, filter_extinfo_index,
 				       info->extinfo.size, i);
 				continue;
@@ -4096,13 +4096,13 @@ static int fts_identify_panel(struct fts_ts_info *info)
 				 * override table.
 				 */
 				panel_index = filter_extinfo_fw;
-				pr_info("%s: Overriding with row=%d, panel_index=%d.\n",
+				pr_debug("%s: Overriding with row=%d, panel_index=%d.\n",
 					 __func__, i, panel_index);
 				break;
 			}
 		}
 	} else {
-		pr_err("%s: of_property_read_bool(np, \"st,extinfo_override_table\") failed.\n",
+		pr_debug("%s: of_property_read_bool(np, \"st,extinfo_override_table\") failed.\n",
 		       __func__);
 	}
 
@@ -4120,7 +4120,7 @@ static int fts_identify_panel(struct fts_ts_info *info)
 		info->board->fw_name = PATH_FILE_FW;
 	else
 		info->board->fw_name = name;
-	pr_info("firmware name = %s\n", info->board->fw_name);
+	pr_debug("firmware name = %s\n", info->board->fw_name);
 
 	name = NULL;
 	if (info->board->panel)
@@ -4130,14 +4130,14 @@ static int fts_identify_panel(struct fts_ts_info *info)
 		info->board->limits_name = LIMITS_FILE;
 	else
 		info->board->limits_name = name;
-	pr_info("limits name = %s\n", info->board->limits_name);
+	pr_debug("limits name = %s\n", info->board->limits_name);
 
 	inverted = 0;
 	if (info->board->panel)
 		of_property_read_u32_index(np, "st,sensor_inverted",
 					   panel_index, &inverted);
 	info->board->sensor_inverted = (inverted != 0);
-	pr_info("Sensor inverted = %u\n", inverted);
+	pr_debug("Sensor inverted = %u\n", inverted);
 
 	return 0;
 }
@@ -4172,7 +4172,7 @@ static int fts_fw_update(struct fts_ts_info *info)
 	 */
 	ret = fts_read_panel_extinfo(info, 10);
 	if (ret < 0) {
-		pr_err("%s: Failed or timed out during read of extinfo. ret=%d\n",
+		pr_debug("%s: Failed or timed out during read of extinfo. ret=%d\n",
 		       __func__, ret);
 		goto out;
 	}
@@ -4180,20 +4180,20 @@ static int fts_fw_update(struct fts_ts_info *info)
 	/* Identify panel given extinfo that may have been received. */
 	ret = fts_identify_panel(info);
 	if (ret < 0) {
-		pr_err("%s: Encountered error while identifying display panel. ret=%d\n",
+		pr_debug("%s: Encountered error while identifying display panel. ret=%d\n",
 		       __func__, ret);
 		goto out;
 	}
 
-	pr_info("Fw Auto Update is starting...\n");
+	pr_debug("Fw Auto Update is starting...\n");
 
 	/* Check CRC status */
 	ret = fts_crc_check();
 	if (ret > OK) {
-		pr_err("%s: CRC Error or NO FW!\n", __func__);
+		pr_debug("%s: CRC Error or NO FW!\n", __func__);
 		info->reflash_fw = 1;
 	} else {
-		pr_info("%s: NO CRC Error or Impossible to read CRC register!\n",
+		pr_debug("%s: NO CRC Error or Impossible to read CRC register!\n",
 			__func__);
 	}
 
@@ -4201,49 +4201,49 @@ static int fts_fw_update(struct fts_ts_info *info)
 		ret = flashProcedure(info->board->fw_name, info->reflash_fw,
 				     keep_cx);
 		if ((ret & 0xF000000F) == ERROR_FILE_NOT_FOUND) {
-			pr_err("%s: firmware file not found. Bypassing update.\n",
+			pr_debug("%s: firmware file not found. Bypassing update.\n",
 				__func__);
 			ret = 0;
 			goto out;
 		} else if ((ret & 0xFF000000) == ERROR_FLASH_PROCEDURE) {
-			pr_err("%s: firmware update failed; retrying. ERROR %08X\n",
+			pr_debug("%s: firmware update failed; retrying. ERROR %08X\n",
 				__func__, ret);
 			/* Power cycle the touch IC */
 			fts_chip_powercycle(info);
 			ret = flashProcedure(info->board->fw_name,
 					     info->reflash_fw, keep_cx);
 			if ((ret & 0xFF000000) == ERROR_FLASH_PROCEDURE) {
-				pr_err("%s: firmware update failed again! ERROR %08X\n",
+				pr_debug("%s: firmware update failed again! ERROR %08X\n",
 					__func__, ret);
-				pr_err("Fw Auto Update Failed!\n");
+				pr_debug("Fw Auto Update Failed!\n");
 				return ret;
 			}
 		}
 		info->reflash_fw = 0;
 	}
 
-	pr_info("%s: Verifying if CX CRC Error...\n", __func__);
+	pr_debug("%s: Verifying if CX CRC Error...\n", __func__);
 	ret = fts_system_reset();
 	if (ret >= OK) {
 		ret = pollForErrorType(error_to_search, 4);
 		if (ret < OK) {
-			pr_info("%s: No Cx CRC Error Found!\n", __func__);
-			pr_info("%s: Verifying if Panel CRC Error...\n",
+			pr_debug("%s: No Cx CRC Error Found!\n", __func__);
+			pr_debug("%s: Verifying if Panel CRC Error...\n",
 				__func__);
 			error_to_search[0] = EVT_TYPE_ERROR_CRC_PANEL_HEAD;
 			error_to_search[1] = EVT_TYPE_ERROR_CRC_PANEL;
 			ret = pollForErrorType(error_to_search, 2);
 			if (ret < OK) {
-				pr_info("%s: No Panel CRC Error Found!\n",
+				pr_debug("%s: No Panel CRC Error Found!\n",
 					__func__);
 				init_type = NO_INIT;
 			} else {
-				pr_err("%s: Panel CRC Error FOUND! CRC ERROR = %02X\n",
+				pr_debug("%s: Panel CRC Error FOUND! CRC ERROR = %02X\n",
 					__func__, ret);
 				init_type = SPECIAL_PANEL_INIT;
 			}
 		} else {
-			pr_err("%s: Cx CRC Error FOUND! CRC ERROR = %02X\n",
+			pr_debug("%s: Cx CRC Error FOUND! CRC ERROR = %02X\n",
 				__func__, ret);
 
 			/** This path of the code is used only in case there is
@@ -4251,18 +4251,18 @@ static int fts_fw_update(struct fts_ts_info *info)
 			  * to compute the CRC in the CX before
 			  */
 #ifndef COMPUTE_INIT_METHOD
-			pr_info("%s: Try to recovery with CX in fw file...\n",
+			pr_debug("%s: Try to recovery with CX in fw file...\n",
 				__func__);
 			ret = flashProcedure(info->board->fw_name, CRC_CX, 0);
-			pr_info("%s: Refresh panel init data", __func__);
+			pr_debug("%s: Refresh panel init data", __func__);
 #else
-			pr_info("%s: Select Full Panel Init...\n", __func__);
+			pr_debug("%s: Select Full Panel Init...\n", __func__);
 			init_type = SPECIAL_FULL_PANEL_INIT;
 #endif
 		}
 	} else {
 		/* Skip initialization because the real state is unknown */
-		pr_err("%s: Error while executing system reset! ERROR %08X\n",
+		pr_debug("%s: Error while executing system reset! ERROR %08X\n",
 			__func__, ret);
 	}
 
@@ -4275,14 +4275,14 @@ static int fts_fw_update(struct fts_ts_info *info)
 #endif
 			) {
 			init_type = SPECIAL_FULL_PANEL_INIT;
-			pr_err("%s: Different CX AFE Ver: %02X != %02X or invalid MpFlag = %02X... Execute FULL Panel Init!\n",
+			pr_debug("%s: Different CX AFE Ver: %02X != %02X or invalid MpFlag = %02X... Execute FULL Panel Init!\n",
 				__func__, systemInfo.u8_cfgAfeVer,
 				systemInfo.u8_cxAfeVer, systemInfo.u8_mpFlag);
 		} else
 #endif
 		if (systemInfo.u8_cfgAfeVer != systemInfo.u8_panelCfgAfeVer) {
 			init_type = SPECIAL_PANEL_INIT;
-			pr_err("%s: Different Panel AFE Ver: %02X != %02X... Execute Panel Init!\n",
+			pr_debug("%s: Different Panel AFE Ver: %02X != %02X... Execute Panel Init!\n",
 				__func__, systemInfo.u8_cfgAfeVer,
 				systemInfo.u8_panelCfgAfeVer);
 		}
@@ -4296,25 +4296,25 @@ out:
 				     */
 		error = fts_chip_initialization(info, init_type);
 		if (error < OK) {
-			pr_err("%s: Cannot initialize the chip ERROR %08X\n",
+			pr_debug("%s: Cannot initialize the chip ERROR %08X\n",
 				__func__, error);
 		}
 
 		/* Reset after initialization */
 		ret = fts_system_reset();
 		if (ret < OK) {
-			pr_err("%s: Reset failed, ERROR %08X\n", __func__,
+			pr_debug("%s: Reset failed, ERROR %08X\n", __func__,
 			       ret);
 		}
 	}
 
 	error = fts_init_sensing(info);
 	if (error < OK) {
-		pr_err("Cannot initialize the hardware device ERROR %08X\n",
+		pr_debug("Cannot initialize the hardware device ERROR %08X\n",
 			error);
 	}
 
-	pr_err("Fw Update Finished! error = %08X\n", error);
+	pr_debug("Fw Update Finished! error = %08X\n", error);
 	return error;
 }
 
@@ -4359,13 +4359,13 @@ static int fts_chip_initialization(struct fts_ts_info *info, int init_type)
 		if (ret2 == OK)
 			break;
 		initretrycnt++;
-		pr_err("initialization cycle count = %04d - ERROR %08X\n",
+		pr_debug("initialization cycle count = %04d - ERROR %08X\n",
 			initretrycnt, ret2);
 		fts_chip_powercycle(info);
 	}
 
 	if (ret2 < OK)	/* initialization error */
-		pr_err("fts initialization failed %d times\n", RETRY_INIT_BOOT);
+		pr_debug("fts initialization failed %d times\n", RETRY_INIT_BOOT);
 
 	return ret2;
 }
@@ -4396,7 +4396,7 @@ static int fts_interrupt_install(struct fts_ts_info *info)
 					     NUM_EVT_ID, GFP_KERNEL);
 
 	if (!info->event_dispatch_table) {
-		pr_err("OOM allocating event dispatch table\n");
+		pr_debug("OOM allocating event dispatch table\n");
 		return -ENOMEM;
 	}
 
@@ -4423,7 +4423,7 @@ static int fts_interrupt_install(struct fts_ts_info *info)
 	info->irq_enabled = true;
 
 	if (error) {
-		pr_err("Request irq failed\n");
+		pr_debug("Request irq failed\n");
 		kfree(info->event_dispatch_table);
 	}
 
@@ -4459,18 +4459,18 @@ static int fts_init(struct fts_ts_info *info)
 
 	error = fts_system_reset();
 	if (error < OK && isI2cError(error)) {
-		pr_err("Cannot reset the device! ERROR %08X\n", error);
+		pr_debug("Cannot reset the device! ERROR %08X\n", error);
 		return error;
 	} else {
 		if (error == (ERROR_TIMEOUT | ERROR_SYSTEM_RESET_FAIL)) {
-			pr_err("Setting default Sys INFO!\n");
+			pr_debug("Setting default Sys INFO!\n");
 			error = defaultSysInfo(0);
 		} else {
 			error = readSysInfo(0);	/* system reset OK */
 			if (error < OK) {
 				if (!isI2cError(error))
 					error = OK;
-				pr_err("Cannot read Sys Info! ERROR %08X\n",
+				pr_debug("Cannot read Sys Info! ERROR %08X\n",
 					error);
 			}
 		}
@@ -4489,8 +4489,8 @@ int fts_chip_powercycle(struct fts_ts_info *info)
 {
 	int error = 0;
 
-	pr_info("%s: Power Cycle Starting...\n", __func__);
-	pr_info("%s: Disabling IRQ...\n", __func__);
+	pr_debug("%s: Power Cycle Starting...\n", __func__);
+	pr_debug("%s: Disabling IRQ...\n", __func__);
 	/** if IRQ pin is short with DVDD a call to the ISR will triggered when
 	  * the regulator is turned off if IRQ not disabled */
 	fts_enableInterrupt(false);
@@ -4498,14 +4498,14 @@ int fts_chip_powercycle(struct fts_ts_info *info)
 	if (info->vdd_reg) {
 		error = regulator_disable(info->vdd_reg);
 		if (error < 0)
-			pr_err("%s: Failed to disable DVDD regulator\n",
+			pr_debug("%s: Failed to disable DVDD regulator\n",
 				__func__);
 	}
 
 	if (info->avdd_reg) {
 		error = regulator_disable(info->avdd_reg);
 		if (error < 0)
-			pr_err("%s: Failed to disable AVDD regulator\n",
+			pr_debug("%s: Failed to disable AVDD regulator\n",
 				__func__);
 	}
 
@@ -4518,7 +4518,7 @@ int fts_chip_powercycle(struct fts_ts_info *info)
 	if (info->vdd_reg) {
 		error = regulator_enable(info->vdd_reg);
 		if (error < 0)
-			pr_err("%s: Failed to enable DVDD regulator\n",
+			pr_debug("%s: Failed to enable DVDD regulator\n",
 				__func__);
 	}
 
@@ -4527,7 +4527,7 @@ int fts_chip_powercycle(struct fts_ts_info *info)
 	if (info->avdd_reg) {
 		error = regulator_enable(info->avdd_reg);
 		if (error < 0)
-			pr_err("%s: Failed to enable AVDD regulator\n",
+			pr_debug("%s: Failed to enable AVDD regulator\n",
 				__func__);
 	}
 
@@ -4543,7 +4543,7 @@ int fts_chip_powercycle(struct fts_ts_info *info)
 
 	release_all_touches(info);
 
-	pr_info("%s: Power Cycle Finished! ERROR CODE = %08x\n",
+	pr_debug("%s: Power Cycle Finished! ERROR CODE = %08x\n",
 		__func__, error);
 	setSystemResetedUp(1);
 	setSystemResetedDown(1);
@@ -4570,7 +4570,7 @@ static int fts_init_sensing(struct fts_ts_info *info)
 	error |= fts_enableInterrupt(true);	/* enable the interrupt */
 
 	if (error < OK)
-		pr_err("%s Init after Probe error (ERROR = %08X)\n",
+		pr_debug("%s Init after Probe error (ERROR = %08X)\n",
 			__func__, error);
 
 	heatmap_enable();
@@ -4617,7 +4617,7 @@ static int fts_mode_handler(struct fts_ts_info *info, int force)
 		/* do sense off in order to avoid the flooding of the fifo with
 		  * touch events if someone is touching the panel during suspend
 		  **/
-		pr_info("%s: Sense OFF!\n", __func__);
+		pr_debug("%s: Sense OFF!\n", __func__);
 		/* for speed reason (no need to check echo in this case and
 		  * interrupt can be enabled) */
 		ret = setScanMode(SCAN_MODE_ACTIVE, 0x00);
@@ -4626,7 +4626,7 @@ static int fts_mode_handler(struct fts_ts_info *info, int force)
 
 #ifdef GESTURE_MODE
 		if (info->gesture_enabled == 1) {
-			pr_info("%s: enter in gesture mode !\n",
+			pr_debug("%s: enter in gesture mode !\n",
 				 __func__);
 			res = enterGestureMode(isSystemResettedDown());
 			if (res >= OK) {
@@ -4636,7 +4636,7 @@ static int fts_mode_handler(struct fts_ts_info *info, int force)
 					     sizeof(info->mode));
 				MODE_LOW_POWER(info->mode, 0);
 			} else
-				pr_err("%s: enterGestureMode failed! ERROR %08X recovery in senseOff...\n",
+				pr_debug("%s: enterGestureMode failed! ERROR %08X recovery in senseOff...\n",
 					__func__, res);
 		}
 #endif
@@ -4650,21 +4650,21 @@ static int fts_mode_handler(struct fts_ts_info *info, int force)
 #ifdef GLOVE_MODE
 		if ((info->glove_enabled == FEAT_ENABLE &&
 		     isSystemResettedUp()) || force == 1) {
-			pr_info("%s: Glove Mode setting...\n", __func__);
+			pr_debug("%s: Glove Mode setting...\n", __func__);
 			settings[0] = info->glove_enabled;
 			/* required to satisfy also the disable case */
 			ret = setFeatures(FEAT_SEL_GLOVE, settings, 1);
 			if (ret < OK)
-				pr_err("%s: error during setting GLOVE_MODE! ERROR %08X\n",
+				pr_debug("%s: error during setting GLOVE_MODE! ERROR %08X\n",
 					__func__, ret);
 			res |= ret;
 
 			if (ret >= OK && info->glove_enabled == FEAT_ENABLE) {
 				fromIDtoMask(FEAT_SEL_GLOVE, (u8 *)&info->mode,
 					     sizeof(info->mode));
-				pr_info("%s: GLOVE_MODE Enabled!\n", __func__);
+				pr_debug("%s: GLOVE_MODE Enabled!\n", __func__);
 			} else
-				pr_info("%s: GLOVE_MODE Disabled!\n", __func__);
+				pr_debug("%s: GLOVE_MODE Disabled!\n", __func__);
 		}
 
 #endif
@@ -4672,31 +4672,31 @@ static int fts_mode_handler(struct fts_ts_info *info, int force)
 #ifdef COVER_MODE
 		if ((info->cover_enabled == FEAT_ENABLE &&
 		     isSystemResettedUp()) || force == 1) {
-			pr_info("%s: Cover Mode setting...\n", __func__);
+			pr_debug("%s: Cover Mode setting...\n", __func__);
 			settings[0] = info->cover_enabled;
 			ret = setFeatures(FEAT_SEL_COVER, settings, 1);
 			if (ret < OK)
-				pr_err("%s: error during setting COVER_MODE! ERROR %08X\n",
+				pr_debug("%s: error during setting COVER_MODE! ERROR %08X\n",
 					__func__, ret);
 			res |= ret;
 
 			if (ret >= OK && info->cover_enabled == FEAT_ENABLE) {
 				fromIDtoMask(FEAT_SEL_COVER, (u8 *)&info->mode,
 					     sizeof(info->mode));
-				pr_info("%s: COVER_MODE Enabled!\n", __func__);
+				pr_debug("%s: COVER_MODE Enabled!\n", __func__);
 			} else
-				pr_info("%s: COVER_MODE Disabled!\n", __func__);
+				pr_debug("%s: COVER_MODE Disabled!\n", __func__);
 		}
 #endif
 #ifdef CHARGER_MODE
 		if ((info->charger_enabled > 0 && isSystemResettedUp()) ||
 		    force == 1) {
-			pr_info("%s: Charger Mode setting...\n", __func__);
+			pr_debug("%s: Charger Mode setting...\n", __func__);
 
 			settings[0] = info->charger_enabled;
 			ret = setFeatures(FEAT_SEL_CHARGER, settings, 1);
 			if (ret < OK)
-				pr_err("%s: error during setting CHARGER_MODE! ERROR %08X\n",
+				pr_debug("%s: error during setting CHARGER_MODE! ERROR %08X\n",
 					__func__, ret);
 			res |= ret;
 
@@ -4704,10 +4704,10 @@ static int fts_mode_handler(struct fts_ts_info *info, int force)
 				fromIDtoMask(FEAT_SEL_CHARGER,
 					     (u8 *)&info->mode,
 					     sizeof(info->mode));
-				pr_info("%s: CHARGER_MODE Enabled!\n",
+				pr_debug("%s: CHARGER_MODE Enabled!\n",
 					__func__);
 			} else
-				pr_info("%s: CHARGER_MODE Disabled!\n",
+				pr_debug("%s: CHARGER_MODE Disabled!\n",
 					__func__);
 		}
 #endif
@@ -4716,20 +4716,20 @@ static int fts_mode_handler(struct fts_ts_info *info, int force)
 #ifdef GRIP_MODE
 		if ((info->grip_enabled == FEAT_ENABLE &&
 		     isSystemResettedUp()) || force == 1) {
-			pr_info("%s: Grip Mode setting...\n", __func__);
+			pr_debug("%s: Grip Mode setting...\n", __func__);
 			settings[0] = info->grip_enabled;
 			ret = setFeatures(FEAT_SEL_GRIP, settings, 1);
 			if (ret < OK)
-				pr_err("%s: error during setting GRIP_MODE! ERROR %08X\n",
+				pr_debug("%s: error during setting GRIP_MODE! ERROR %08X\n",
 					__func__, ret);
 			res |= ret;
 
 			if (ret >= OK && info->grip_enabled == FEAT_ENABLE) {
 				fromIDtoMask(FEAT_SEL_GRIP, (u8 *)&info->mode,
 					     sizeof(info->mode));
-				pr_info("%s: GRIP_MODE Enabled!\n", __func__);
+				pr_debug("%s: GRIP_MODE Enabled!\n", __func__);
 			} else
-				pr_info("%s: GRIP_MODE Disabled!\n", __func__);
+				pr_debug("%s: GRIP_MODE Disabled!\n", __func__);
 		}
 #endif
 		/* If some selective scan want to be enabled can be done
@@ -4740,7 +4740,7 @@ static int fts_mode_handler(struct fts_ts_info *info, int force)
 		/*		ACTIVE_FORCE; */
 		settings[0] = 0xFF;	/* enable all the possible scans mode
 					  * supported by the config */
-		pr_info("%s: Sense ON!\n", __func__);
+		pr_debug("%s: Sense ON!\n", __func__);
 		res |= setScanMode(SCAN_MODE_ACTIVE, settings[0]);
 		info->mode |= (SCAN_MODE_ACTIVE << 24);
 		MODE_ACTIVE(info->mode, settings[0]);
@@ -4750,7 +4750,7 @@ static int fts_mode_handler(struct fts_ts_info *info, int force)
 		break;
 
 	default:
-		pr_err("%s: invalid resume_bit value = %d! ERROR %08X\n",
+		pr_debug("%s: invalid resume_bit value = %d! ERROR %08X\n",
 			__func__, info->resume_bit, ERROR_OP_NOT_ALLOW);
 		res = ERROR_OP_NOT_ALLOW;
 	}
@@ -4779,7 +4779,7 @@ static void fts_set_switch_gpio(struct fts_ts_info *info, int gpio_value)
 
 	retval = gpio_direction_output(gpio, gpio_value);
 	if (retval < 0)
-		pr_err("%s: Failed to toggle switch_gpio, err = %d\n",
+		pr_debug("%s: Failed to toggle switch_gpio, err = %d\n",
 			__func__, retval);
 }
 
@@ -4918,7 +4918,7 @@ int fts_set_bus_ref(struct fts_ts_info *info, u16 ref, bool enable)
 	if (enable && ref != FTS_BUS_REF_SCREEN_ON && ref != FTS_BUS_REF_IRQ) {
 		wait_for_completion_timeout(&info->bus_resumed, HZ);
 		if (info->sensor_sleep) {
-			pr_err("%s: Failed to wake the touch bus: mask=0x%04X, ref=0x%04X, enable=%d.\n",
+			pr_debug("%s: Failed to wake the touch bus: mask=0x%04X, ref=0x%04X, enable=%d.\n",
 			       __func__, info->bus_refmask, ref, enable);
 			result = ERROR_TIMEOUT;
 		}
@@ -4945,7 +4945,7 @@ static int fts_screen_state_chg_callback(struct notifier_block *nb,
 		return NOTIFY_DONE;
 
 	if (!info || !evdata || !evdata->data) {
-		pr_info("%s: Bad fts notifier call!\n", __func__);
+		pr_debug("%s: Bad fts notifier call!\n", __func__);
 		return NOTIFY_DONE;
 	}
 
@@ -5006,7 +5006,7 @@ static int fts_get_reg(struct fts_ts_info *info, bool get)
 	if ((bdata->vdd_reg_name != NULL) && (*bdata->vdd_reg_name != 0)) {
 		info->vdd_reg = regulator_get(info->dev, bdata->vdd_reg_name);
 		if (IS_ERR(info->vdd_reg)) {
-			pr_err("%s: Failed to get power regulator\n", __func__);
+			pr_debug("%s: Failed to get power regulator\n", __func__);
 			retval = PTR_ERR(info->vdd_reg);
 			goto regulator_put;
 		}
@@ -5015,7 +5015,7 @@ static int fts_get_reg(struct fts_ts_info *info, bool get)
 	if ((bdata->avdd_reg_name != NULL) && (*bdata->avdd_reg_name != 0)) {
 		info->avdd_reg = regulator_get(info->dev, bdata->avdd_reg_name);
 		if (IS_ERR(info->avdd_reg)) {
-			pr_err("%s: Failed to get bus pullup regulator\n",
+			pr_debug("%s: Failed to get bus pullup regulator\n",
 				__func__);
 			retval = PTR_ERR(info->avdd_reg);
 			goto regulator_put;
@@ -5059,7 +5059,7 @@ static int fts_enable_reg(struct fts_ts_info *info, bool enable)
 	if (info->vdd_reg) {
 		retval = regulator_enable(info->vdd_reg);
 		if (retval < 0) {
-			pr_err("%s: Failed to enable bus regulator\n",
+			pr_debug("%s: Failed to enable bus regulator\n",
 				__func__);
 			goto exit;
 		}
@@ -5068,7 +5068,7 @@ static int fts_enable_reg(struct fts_ts_info *info, bool enable)
 	if (info->avdd_reg) {
 		retval = regulator_enable(info->avdd_reg);
 		if (retval < 0) {
-			pr_err("%s: Failed to enable power regulator\n",
+			pr_debug("%s: Failed to enable power regulator\n",
 				__func__);
 			goto disable_bus_reg;
 		}
@@ -5107,7 +5107,7 @@ static int fts_gpio_setup(int gpio, bool config, int dir, int state)
 
 		retval = gpio_request(gpio, buf);
 		if (retval) {
-			pr_err("%s: Failed to get gpio %d (code: %d)",
+			pr_debug("%s: Failed to get gpio %d (code: %d)",
 				__func__, gpio, retval);
 			return retval;
 		}
@@ -5117,7 +5117,7 @@ static int fts_gpio_setup(int gpio, bool config, int dir, int state)
 		else
 			retval = gpio_direction_output(gpio, state);
 		if (retval) {
-			pr_err("%s: Failed to set gpio %d direction",
+			pr_debug("%s: Failed to set gpio %d direction",
 				__func__, gpio);
 			return retval;
 		}
@@ -5140,7 +5140,7 @@ static int fts_set_gpio(struct fts_ts_info *info)
 
 	retval = fts_gpio_setup(bdata->irq_gpio, true, 0, 0);
 	if (retval < 0) {
-		pr_err("%s: Failed to configure irq GPIO\n", __func__);
+		pr_debug("%s: Failed to configure irq GPIO\n", __func__);
 		goto err_gpio_irq;
 	}
 
@@ -5148,7 +5148,7 @@ static int fts_set_gpio(struct fts_ts_info *info)
 		retval = fts_gpio_setup(bdata->switch_gpio, true, 1,
 					FTS_SWITCH_GPIO_VALUE_AP_MASTER);
 		if (retval < 0)
-			pr_err("%s: Failed to configure I2C switch\n",
+			pr_debug("%s: Failed to configure I2C switch\n",
 				__func__);
 	}
 
@@ -5156,14 +5156,14 @@ static int fts_set_gpio(struct fts_ts_info *info)
 		retval = fts_gpio_setup(bdata->disp_rate_gpio, true, 1,
 					(info->display_refresh_rate == 90));
 		if (retval < 0)
-			pr_err("%s: Failed to configure disp_rate_gpio\n",
+			pr_debug("%s: Failed to configure disp_rate_gpio\n",
 				__func__);
 	}
 
 	if (bdata->reset_gpio >= 0) {
 		retval = fts_gpio_setup(bdata->reset_gpio, true, 1, 0);
 		if (retval < 0) {
-			pr_err("%s: Failed to configure reset GPIO\n",
+			pr_debug("%s: Failed to configure reset GPIO\n",
 				__func__);
 			goto err_gpio_reset;
 		}
@@ -5223,10 +5223,10 @@ static int parse_dt(struct device *dev, struct fts_hw_platform_data *bdata)
 	}
 
 	bdata->switch_gpio = of_get_named_gpio(np, "st,switch_gpio", 0);
-	pr_info("switch_gpio = %d\n", bdata->switch_gpio);
+	pr_debug("switch_gpio = %d\n", bdata->switch_gpio);
 
 	bdata->irq_gpio = of_get_named_gpio_flags(np, "st,irq-gpio", 0, NULL);
-	pr_info("irq_gpio = %d\n", bdata->irq_gpio);
+	pr_debug("irq_gpio = %d\n", bdata->irq_gpio);
 
 	retval = of_property_read_string(np, "st,regulator_dvdd", &name);
 	if (retval == -EINVAL)
@@ -5235,7 +5235,7 @@ static int parse_dt(struct device *dev, struct fts_hw_platform_data *bdata)
 		return retval;
 	else {
 		bdata->vdd_reg_name = name;
-		pr_info("pwr_reg_name = %s\n", name);
+		pr_debug("pwr_reg_name = %s\n", name);
 	}
 
 	retval = of_property_read_string(np, "st,regulator_avdd", &name);
@@ -5245,34 +5245,34 @@ static int parse_dt(struct device *dev, struct fts_hw_platform_data *bdata)
 		return retval;
 	else {
 		bdata->avdd_reg_name = name;
-		pr_info("bus_reg_name = %s\n", name);
+		pr_debug("bus_reg_name = %s\n", name);
 	}
 
 	if (of_property_read_bool(np, "st,reset-gpio")) {
 		bdata->reset_gpio = of_get_named_gpio_flags(np,
 							    "st,reset-gpio", 0,
 							    NULL);
-		pr_info("reset_gpio = %d\n", bdata->reset_gpio);
+		pr_debug("reset_gpio = %d\n", bdata->reset_gpio);
 	} else
 		bdata->reset_gpio = GPIO_NOT_DEFINED;
 
 	if (of_property_read_bool(np, "st,disp-rate-gpio")) {
 		bdata->disp_rate_gpio =
 		    of_get_named_gpio_flags(np, "st,disp-rate-gpio", 0, NULL);
-		pr_info("disp_rate_gpio = %d\n", bdata->disp_rate_gpio);
+		pr_debug("disp_rate_gpio = %d\n", bdata->disp_rate_gpio);
 	} else
 		bdata->disp_rate_gpio = GPIO_NOT_DEFINED;
 
 	bdata->auto_fw_update = true;
 	if (of_property_read_bool(np, "st,disable-auto-fw-update")) {
 		bdata->auto_fw_update = false;
-		pr_info("Automatic firmware update disabled\n");
+		pr_debug("Automatic firmware update disabled\n");
 	}
 
 	bdata->heatmap_mode_full_init = false;
 	if (of_property_read_bool(np, "st,heatmap_mode_full")) {
 		bdata->heatmap_mode_full_init = true;
-		pr_info("Full heatmap enabled\n");
+		pr_debug("Full heatmap enabled\n");
 	}
 
 	if (panel && panel->funcs && panel->funcs->get_timings &&
@@ -5280,7 +5280,7 @@ static int parse_dt(struct device *dev, struct fts_hw_platform_data *bdata)
 		coords[0] = timing.hactive.max - 1;
 		coords[1] = timing.vactive.max - 1;
 	} else if (of_property_read_u32_array(np, "st,max-coords", coords, 2)) {
-		pr_err("st,max-coords not found, using 1440x2560\n");
+		pr_debug("st,max-coords not found, using 1440x2560\n");
 		coords[0] = 1440 - 1;
 		coords[1] = 2560 - 1;
 	}
@@ -5314,26 +5314,26 @@ static int fts_probe(struct spi_device *client)
 	int skip_5_1 = 0;
 	u16 bus_type;
 
-	pr_info("%s: driver probe begin!\n", __func__);
-	pr_info("driver ver. %s\n", FTS_TS_DRV_VERSION);
+	pr_debug("%s: driver probe begin!\n", __func__);
+	pr_debug("driver ver. %s\n", FTS_TS_DRV_VERSION);
 
-	pr_info("SET Bus Functionality :\n");
+	pr_debug("SET Bus Functionality :\n");
 #ifdef I2C_INTERFACE
-	pr_info("I2C interface...\n");
+	pr_debug("I2C interface...\n");
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
-		pr_err("Unsupported I2C functionality\n");
+		pr_debug("Unsupported I2C functionality\n");
 		error = -EIO;
 		goto ProbeErrorExit_0;
 	}
 
-	pr_info("i2c address: %x\n", client->addr);
+	pr_debug("i2c address: %x\n", client->addr);
 	bus_type = BUS_I2C;
 #else
-	pr_info("SPI interface...\n");
+	pr_debug("SPI interface...\n");
 
 	client->bits_per_word = 8;
 	if (spi_setup(client) < 0) {
-		pr_err("Unsupported SPI functionality\n");
+		pr_debug("Unsupported SPI functionality\n");
 		error = -EIO;
 		goto ProbeErrorExit_0;
 	}
@@ -5341,12 +5341,12 @@ static int fts_probe(struct spi_device *client)
 #endif
 
 
-	pr_info("SET Device driver INFO:\n");
+	pr_debug("SET Device driver INFO:\n");
 
 
 	info = kzalloc(sizeof(struct fts_ts_info), GFP_KERNEL);
 	if (!info) {
-		pr_err("Out of memory... Impossible to allocate struct info!\n");
+		pr_debug("Out of memory... Impossible to allocate struct info!\n");
 		error = -ENOMEM;
 		goto ProbeErrorExit_0;
 	}
@@ -5362,7 +5362,7 @@ static int fts_probe(struct spi_device *client)
 #ifdef CONFIG_TOUCHSCREEN_TBN
 	info->tbn = tbn_init(info->dev);
 	if (!info->tbn) {
-		pr_err("ERROR: failed to init tbn context\n");
+		pr_debug("ERROR: failed to init tbn context\n");
 		error = -ENODEV;
 		goto ProbeErrorExit_1;
 	}
@@ -5373,7 +5373,7 @@ static int fts_probe(struct spi_device *client)
 					   sizeof(struct fts_hw_platform_data),
 					   GFP_KERNEL);
 		if (!info->board) {
-			pr_err("ERROR:info.board kzalloc failed\n");
+			pr_debug("ERROR:info.board kzalloc failed\n");
 			goto ProbeErrorExit_1;
 		}
 		error = parse_dt(&client->dev, info->board);
@@ -5381,34 +5381,34 @@ static int fts_probe(struct spi_device *client)
 			goto ProbeErrorExit_1;
 	}
 
-	pr_info("SET Regulators:\n");
+	pr_debug("SET Regulators:\n");
 	retval = fts_get_reg(info, true);
 	if (retval < 0) {
-		pr_err("ERROR: %s: Failed to get regulators\n", __func__);
+		pr_debug("ERROR: %s: Failed to get regulators\n", __func__);
 		goto ProbeErrorExit_1;
 	}
 
 	retval = fts_enable_reg(info, true);
 	if (retval < 0) {
-		pr_err("%s: ERROR Failed to enable regulators\n", __func__);
+		pr_debug("%s: ERROR Failed to enable regulators\n", __func__);
 		goto ProbeErrorExit_2;
 	}
 
-	pr_info("SET GPIOS:\n");
+	pr_debug("SET GPIOS:\n");
 	retval = fts_set_gpio(info);
 	if (retval < 0) {
-		pr_err("%s: ERROR Failed to set up GPIO's\n", __func__);
+		pr_debug("%s: ERROR Failed to set up GPIO's\n", __func__);
 		goto ProbeErrorExit_2;
 	}
 	info->client->irq = gpio_to_irq(info->board->irq_gpio);
 
-	pr_info("SET Event Handler:\n");
+	pr_debug("SET Event Handler:\n");
 
 	wakeup_source_init(&info->wakesrc, "fts_tp");
 	info->event_wq = alloc_workqueue("fts-event-queue", WQ_UNBOUND |
 					 WQ_HIGHPRI | WQ_CPU_INTENSIVE, 1);
 	if (!info->event_wq) {
-		pr_err("ERROR: Cannot create work thread\n");
+		pr_debug("ERROR: Cannot create work thread\n");
 		error = -ENOMEM;
 		goto ProbeErrorExit_4;
 	}
@@ -5419,11 +5419,11 @@ static int fts_probe(struct spi_device *client)
 	init_completion(&info->bus_resumed);
 	complete_all(&info->bus_resumed);
 
-	pr_info("SET Input Device Property:\n");
+	pr_debug("SET Input Device Property:\n");
 	info->dev = &info->client->dev;
 	info->input_dev = input_allocate_device();
 	if (!info->input_dev) {
-		pr_err("ERROR: No such input device defined!\n");
+		pr_debug("ERROR: No such input device defined!\n");
 		error = -ENODEV;
 		goto ProbeErrorExit_5;
 	}
@@ -5519,7 +5519,7 @@ static int fts_probe(struct spi_device *client)
 	/* register the multi-touch input device */
 	error = input_register_device(info->input_dev);
 	if (error) {
-		pr_err("ERROR: No such input device\n");
+		pr_debug("ERROR: No such input device\n");
 		error = -ENODEV;
 		goto ProbeErrorExit_5_1;
 	}
@@ -5564,13 +5564,13 @@ static int fts_probe(struct spi_device *client)
 	pm_qos_add_request(&info->pm_qos_req, PM_QOS_CPU_DMA_LATENCY,
 			PM_QOS_DEFAULT_VALUE);
 
-	pr_info("Init Core Lib:\n");
+	pr_debug("Init Core Lib:\n");
 	initCore(info);
 	/* init hardware device */
-	pr_info("Device Initialization:\n");
+	pr_debug("Device Initialization:\n");
 	error = fts_init(info);
 	if (error < OK) {
-		pr_err("Cannot initialize the device ERROR %08X\n", error);
+		pr_debug("Cannot initialize the device ERROR %08X\n", error);
 		error = -ENODEV;
 		goto ProbeErrorExit_6;
 	}
@@ -5596,40 +5596,40 @@ static int fts_probe(struct spi_device *client)
 		goto ProbeErrorExit_6;
 
 #if defined(FW_UPDATE_ON_PROBE) && defined(FW_H_FILE)
-	pr_info("FW Update and Sensing Initialization:\n");
+	pr_debug("FW Update and Sensing Initialization:\n");
 	error = fts_fw_update(info);
 	if (error < OK) {
-		pr_err("Cannot execute fw upgrade the device ERROR %08X\n",
+		pr_debug("Cannot execute fw upgrade the device ERROR %08X\n",
 			error);
 		error = -ENODEV;
 		goto ProbeErrorExit_7;
 	}
 
 #else
-	pr_info("SET Auto Fw Update:\n");
+	pr_debug("SET Auto Fw Update:\n");
 	info->fwu_workqueue = alloc_workqueue("fts-fwu-queue",
 					      WQ_UNBOUND | WQ_HIGHPRI |
 					      WQ_CPU_INTENSIVE, 1);
 	if (!info->fwu_workqueue) {
-		pr_err("ERROR: Cannot create fwu work thread\n");
+		pr_debug("ERROR: Cannot create fwu work thread\n");
 		goto ProbeErrorExit_7;
 	}
 	INIT_DELAYED_WORK(&info->fwu_work, fts_fw_update_auto);
 #endif
 
-	pr_info("SET Device File Nodes:\n");
+	pr_debug("SET Device File Nodes:\n");
 	/* sysfs stuff */
 	info->attrs.attrs = fts_attr_group;
 	error = sysfs_create_group(&client->dev.kobj, &info->attrs);
 	if (error) {
-		pr_err("ERROR: Cannot create sysfs structure!\n");
+		pr_debug("ERROR: Cannot create sysfs structure!\n");
 		error = -ENODEV;
 		goto ProbeErrorExit_7;
 	}
 
 	error = fts_proc_init();
 	if (error < OK)
-		pr_err("Error: can not create /proc file!\n");
+		pr_debug("Error: can not create /proc file!\n");
 
 	if (info->fwu_workqueue)
 		queue_delayed_work(info->fwu_workqueue, &info->fwu_work,
@@ -5642,9 +5642,9 @@ static int fts_probe(struct spi_device *client)
 	if (info->touchsim.wq)
 		INIT_WORK(&(info->touchsim.work), touchsim_work);
 	else
-		pr_err("ERROR: Cannot create touch sim. test work queue\n");
+		pr_debug("ERROR: Cannot create touch sim. test work queue\n");
 
-	pr_info("Probe Finished!\n");
+	pr_debug("Probe Finished!\n");
 
 	return OK;
 
@@ -5682,7 +5682,7 @@ ProbeErrorExit_1:
 
 ProbeErrorExit_0:
 	if (error != -EPROBE_DEFER)
-		pr_err("Probe Failed!\n");
+		pr_debug("Probe Failed!\n");
 
 	return error;
 }
@@ -5705,7 +5705,7 @@ static int fts_remove(struct spi_device *client)
 	/* Force the bus active throughout removal of the client */
 	fts_set_bus_ref(info, FTS_BUS_REF_FORCE_ACTIVE, true);
 
-	pr_info("%s\n", __func__);
+	pr_debug("%s\n", __func__);
 
 #ifdef CONFIG_TOUCHSCREEN_TBN
 	tbn_cleanup(info->tbn);
@@ -5768,10 +5768,10 @@ static int fts_pm_suspend(struct device *dev)
 	struct fts_ts_info *info = dev_get_drvdata(dev);
 
 	if (info->bus_refmask)
-		pr_warn("%s: bus_refmask 0x%X\n", __func__, info->bus_refmask);
+		pr_debug("%s: bus_refmask 0x%X\n", __func__, info->bus_refmask);
 
 	if (info->resume_bit == 1 || info->sensor_sleep == false) {
-		pr_warn("%s: can't suspend because touch bus is in use!\n",
+		pr_debug("%s: can't suspend because touch bus is in use!\n",
 			__func__);
 		return -EBUSY;
 	}
@@ -5845,7 +5845,7 @@ static int __init fts_driver_init(void)
 
 static void __exit fts_driver_exit(void)
 {
-	pr_info("%s\n", __func__);
+	pr_debug("%s\n", __func__);
 #ifdef I2C_INTERFACE
 	i2c_del_driver(&fts_i2c_driver);
 #else
