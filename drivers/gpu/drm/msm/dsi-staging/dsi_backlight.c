@@ -439,7 +439,7 @@ static int dsi_backlight_update_status(struct backlight_device *bd)
 	dsi_backlight_hbm_dimming_restart(bl);
 
 	if (dsi_panel_initialized(panel) && bl->update_bl) {
-		pr_info("req:%d bl:%d state:0x%x\n",
+		pr_debug("req:%d bl:%d state:0x%x\n",
 			bd->props.brightness, bl_lvl, bd->props.state);
 
 		rc = bl->update_bl(bl, bl_lvl);
