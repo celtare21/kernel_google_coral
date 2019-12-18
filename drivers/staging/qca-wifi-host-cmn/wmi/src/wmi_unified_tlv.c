@@ -14435,7 +14435,9 @@ static QDF_STATUS extract_gtk_rsp_event_tlv(wmi_unified_t wmi_handle,
 		param_buf->fixed_param;
 
 	if (fixed_param->vdev_id >= WLAN_UMAC_PSOC_MAX_VDEVS) {
+#ifdef WLAN_DEBUG
 		wmi_err_rl("Invalid vdev_id %u", fixed_param->vdev_id);
+#endif
 		return QDF_STATUS_E_INVAL;
 	}
 
@@ -19803,9 +19805,11 @@ static QDF_STATUS extract_chainmask_tables_tlv(wmi_unified_t wmi_handle,
 	for (i = 0; i < hw_caps->num_chainmask_tables; i++) {
 		if (chainmask_table[i].num_valid_chainmasks >
 		    (UINT_MAX - num_mac_phy_chainmask_caps)) {
+#ifdef WLAN_DEBUG
 			wmi_err_rl("integer overflow, num_mac_phy_chainmask_caps:%d, i:%d, um_valid_chainmasks:%d",
 				   num_mac_phy_chainmask_caps, i,
 				   chainmask_table[i].num_valid_chainmasks);
+#endif
 			return QDF_STATUS_E_INVAL;
 		}
 		num_mac_phy_chainmask_caps +=
@@ -19814,9 +19818,11 @@ static QDF_STATUS extract_chainmask_tables_tlv(wmi_unified_t wmi_handle,
 
 	if (num_mac_phy_chainmask_caps >
 	    param_buf->num_mac_phy_chainmask_caps) {
+#ifdef WLAN_DEBUG
 		wmi_err_rl("invalid chainmask caps num, num_mac_phy_chainmask_caps:%d, param_buf->num_mac_phy_chainmask_caps:%d",
 			   num_mac_phy_chainmask_caps,
 			   param_buf->num_mac_phy_chainmask_caps);
+#endif
 		return QDF_STATUS_E_INVAL;
 	}
 
@@ -19928,8 +19934,10 @@ static QDF_STATUS extract_service_ready_ext_tlv(wmi_unified_t wmi_handle,
 	if (param->num_chainmask_tables > PSOC_MAX_CHAINMASK_TABLES ||
 	    param->num_chainmask_tables >
 		param_buf->num_mac_phy_chainmask_combo) {
+#ifdef WLAN_DEBUG
 		wmi_err_rl("num_chainmask_tables is OOB: %u",
 			   param->num_chainmask_tables);
+#endif
 		return QDF_STATUS_E_INVAL;
 	}
 	chain_mask_combo = param_buf->mac_phy_chainmask_combo;
@@ -20063,8 +20071,10 @@ static QDF_STATUS extract_mac_phy_cap_service_ready_ext_tlv(
 		return QDF_STATUS_E_INVAL;
 	if (hw_caps->num_hw_modes > PSOC_MAX_HW_MODE ||
 	    hw_caps->num_hw_modes > param_buf->num_hw_mode_caps) {
+#ifdef WLAN_DEBUG
 		wmi_err_rl("invalid num_hw_modes %d, num_hw_mode_caps %d",
 			   hw_caps->num_hw_modes, param_buf->num_hw_mode_caps);
+#endif
 		return QDF_STATUS_E_INVAL;
 	}
 
@@ -21010,15 +21020,19 @@ static QDF_STATUS extract_reg_chan_list_update_event_tlv(
 	    (num_2g_reg_rules + num_5g_reg_rules > MAX_REG_RULES) ||
 	    (num_2g_reg_rules + num_5g_reg_rules !=
 	     param_buf->num_reg_rule_array)) {
+#ifdef WLAN_DEBUG
 		wmi_err_rl("Invalid num_2g_reg_rules: %u, num_5g_reg_rules: %u",
 			   num_2g_reg_rules, num_5g_reg_rules);
+#endif
 		return QDF_STATUS_E_FAILURE;
 	}
 	if (param_buf->num_reg_rule_array >
 		(WMI_SVC_MSG_MAX_SIZE - sizeof(*chan_list_event_hdr)) /
 		sizeof(*wmi_reg_rule)) {
+#ifdef WLAN_DEBUG
 		wmi_err_rl("Invalid num_reg_rule_array: %u",
 			   param_buf->num_reg_rule_array);
+#endif
 		return QDF_STATUS_E_FAILURE;
 	}
 
@@ -22199,8 +22213,10 @@ extract_roam_scan_stats_res_evt_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 	scan_param_size = sizeof(struct wmi_roam_scan_stats_params);
 	*vdev_id = fixed_param->vdev_id;
 	if (num_scans > WMI_ROAM_SCAN_STATS_MAX) {
+#ifdef WLAN_DEBUG
 		wmi_err_rl("%u exceeded maximum roam scan stats: %u",
 			   num_scans, WMI_ROAM_SCAN_STATS_MAX);
+#endif
 		return QDF_STATUS_E_INVAL;
 	}
 
@@ -22249,9 +22265,11 @@ extract_roam_scan_stats_res_evt_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 		for (count = 0; count < param_buf->num_num_channels; count++) {
 			if (param_buf->num_channels[count] >
 			    WMI_ROAM_SCAN_STATS_CHANNELS_MAX) {
+#ifdef WLAN_DEBUG
 				wmi_err_rl("%u exceeded max scan channels %u",
 					   param_buf->num_channels[count],
 					   WMI_ROAM_SCAN_STATS_CHANNELS_MAX);
+#endif
 				goto error;
 			}
 			chan_info_sum += param_buf->num_channels[count];
@@ -22270,9 +22288,11 @@ extract_roam_scan_stats_res_evt_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 		for (cnt = 0; cnt < param_buf->num_num_roam_candidates; cnt++) {
 			if (param_buf->num_roam_candidates[cnt] >
 			    WMI_ROAM_SCAN_STATS_CANDIDATES_MAX) {
+#ifdef WLAN_DEBUG
 				wmi_err_rl("%u exceeded max scan cand %u",
 					   param_buf->num_roam_candidates[cnt],
 					   WMI_ROAM_SCAN_STATS_CANDIDATES_MAX);
+#endif
 				goto error;
 			}
 			roam_cand_sum += param_buf->num_roam_candidates[cnt];
