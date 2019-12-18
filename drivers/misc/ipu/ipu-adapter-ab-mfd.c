@@ -207,7 +207,7 @@ static int ipu_adapter_ab_mfd_map_to_bar(struct device *dev,
 	int ret;
 
 	if (shared_buffer->mapped_to_bar) {
-		dev_warn(dev, "%s: shared buffer already mapped to bar\n",
+		dev_dbg(dev, "%s: shared buffer already mapped to bar\n",
 				__func__);
 		return -EINVAL;
 	}
@@ -231,7 +231,7 @@ static int ipu_adapter_ab_mfd_unmap_from_bar(struct device *dev,
 	int ret;
 
 	if (!shared_buffer->mapped_to_bar) {
-		dev_warn(dev, "%s: shared buffer not mapped to bar\n",
+		dev_dbg(dev, "%s: shared buffer not mapped to bar\n",
 				__func__);
 		return -EINVAL;
 	}
@@ -384,7 +384,7 @@ static void ipu_adapter_ab_mfd_sync_dma(struct device *dev,
 	desc.dir = direction;
 	err = abc_pcie_issue_sessionless_dma_xfer_sync(&desc);
 	if (err)
-		dev_warn(dev, "%s: DMA transfer failed\n",
+		dev_dbg(dev, "%s: DMA transfer failed\n",
 			__func__);
 }
 
@@ -742,7 +742,7 @@ static int ipu_adapter_ab_sm_clk_listener(struct notifier_block *nb,
 	if (action & AB_DRAM_PRE_RATE_CHANGE) {
 
 		if (action & AB_DRAM_DATA_PRE_OFF) {
-			dev_warn(dev_data->dev,
+			dev_dbg(dev_data->dev,
 				 "DRAM data will be lost; please free ringbuffer\n");
 			/* TODO(b/128524484) additional work on client side */
 		}
@@ -754,7 +754,7 @@ static int ipu_adapter_ab_sm_clk_listener(struct notifier_block *nb,
 	if (action & AB_DRAM_POST_RATE_CHANGE) {
 
 		if (action & AB_DRAM_DATA_POST_OFF) {
-			dev_warn(dev_data->dev,
+			dev_dbg(dev_data->dev,
 				 "DRAM data is lost; suggest double check whether ringbuffer has been freed\n");
 			/* TODO(b/128524484) only if necessary */
 		}
