@@ -1322,7 +1322,9 @@ wmi_buf_t wmi_buf_alloc_fl(wmi_unified_t wmi_handle, uint32_t len,
 	wmi_buf_t wmi_buf;
 
 	if (roundup(len + WMI_MIN_HEAD_ROOM, 4) > wmi_handle->max_msg_len) {
+#ifdef WLAN_DEBUG
 		wmi_nofl_err("%s:%d, Invalid len:%d", func, line, len);
+#endif
 		QDF_DEBUG_PANIC();
 		return NULL;
 	}
