@@ -3655,7 +3655,7 @@ static int __init clk_debug_init(void)
 		return -ENOMEM;
 
 
-	d = debugfs_create_u32("debug_suspend", 0644, rootdir, &debug_suspend);
+	d = debugfs_create_u32("debug_suspend", 0444, rootdir, &debug_suspend);
 	if (!d)
 		return -ENOMEM;
 
