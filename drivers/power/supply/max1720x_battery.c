@@ -764,7 +764,7 @@ static int max17x0x_reg_store_sz(struct regmap *regmap,
 				 const void *data,
 				 int size)
 {
-	int ret;
+	int ret = 0;
 
 	if (size > a->size)
 		size = a->size;
@@ -795,7 +795,7 @@ static int max17x0x_reg_load_sz(struct regmap *regmap,
 				void *data,
 				int size)
 {
-	int ret;
+	int ret = 0;
 
 	if (size > a->size)
 		size = a->size;
@@ -3514,7 +3514,7 @@ static u16 max1720x_read_rsense(const struct max1720x_chip *chip)
 static int max1730x_check_prot(struct max1720x_chip *chip, u16 devname)
 {
 	int needs_recall = 0;
-	u16 nprotcfg;
+	u16 nprotcfg = 0;
 	int ret;
 
 	/* check protection registers */
@@ -3542,7 +3542,7 @@ static int max17x0x_nvram_recall(struct max1720x_chip *chip)
 
 static int max17x0x_fixups(struct max1720x_chip *chip)
 {
-	int ret;
+	int ret = 0;
 
 	if (max17xxx_gauge_type == MAX1730X_GAUGE_TYPE) {
 		struct device_node *node = chip->dev->of_node;

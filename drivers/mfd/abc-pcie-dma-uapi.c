@@ -211,7 +211,7 @@ static int abc_pcie_dma_user_xfer_start(struct device *dev,
 
 	if (xfer->poisoned) {
 		err = -EREMOTEIO;
-		dev_err(dev, "Transfer (id:%0llu) has been poisoned.%\n",
+		dev_err(dev, "Transfer (id:%0llu) has been poisoned.\n",
 			desc.id);
 	} else {
 		err = abc_pcie_start_dma_xfer_locked(xfer, &desc.start_id);
