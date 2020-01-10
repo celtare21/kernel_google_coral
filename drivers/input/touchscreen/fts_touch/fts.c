@@ -3969,7 +3969,7 @@ static int fts_read_panel_extinfo(struct fts_ts_info *info, int wait_seconds)
 	} else {
 		info->extinfo.data = kzalloc(len, GFP_KERNEL);
 		if (!info->extinfo.data) {
-			pr_debug("%s: failed to allocate extinfo. len=%d.\n",
+			pr_debug("%s: failed to allocate extinfo. len=%ld.\n",
 			       __func__, len);
 			ret = -ENOMEM;
 			goto error;
@@ -3993,7 +3993,7 @@ static int fts_read_panel_extinfo(struct fts_ts_info *info, int wait_seconds)
 				 wait_seconds - (retries / RETRIES_PER_S));
 			return 0;
 		} else {
-			pr_debug("%s: dsi_panel_read_vendor_extinfo returned error = %d\n",
+			pr_debug("%s: dsi_panel_read_vendor_extinfo returned error = %ld\n",
 			       __func__, len);
 			ret = len;
 			goto error;

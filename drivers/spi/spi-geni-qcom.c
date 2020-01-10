@@ -1731,8 +1731,10 @@ static int spi_geni_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Failed to register SPI master\n");
 		goto spi_geni_probe_unmap;
 	}
-	sysfs_create_file(&(geni_mas->dev->kobj),
-				&dev_attr_spi_slave_state.attr);
+	if (sysfs_create_file(&(geni_mas->dev->kobj),
+				&dev_attr_spi_slave_state.attr))
+		goto spi_geni_probe_unmap;
+
 	snprintf(boot_marker, sizeof(boot_marker),
 			"M - DRIVER GENI_SPI_%d Ready", spi->bus_num);
 	place_marker(boot_marker);
