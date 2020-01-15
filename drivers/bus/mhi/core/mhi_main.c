@@ -1,4 +1,4 @@
-/* Copyright (c) 2018-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2018, 2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1180,6 +1180,10 @@ static void mhi_process_cmd_completion(struct mhi_controller *mhi_cntrl,
 		break;
 	default:
 		chan = MHI_TRE_GET_CMD_CHID(cmd_pkt);
+		if (chan >= mhi_cntrl->max_chan) {
+			MHI_ERR("invalid channel id %u\n", chan);
+			goto del_ring_el;
+		}
 		mhi_chan = &mhi_cntrl->mhi_chan[chan];
 		write_lock_bh(&mhi_chan->lock);
 		mhi_chan->ccs = MHI_TRE_GET_EV_CODE(tre);
@@ -1188,6 +1192,7 @@ static void mhi_process_cmd_completion(struct mhi_controller *mhi_cntrl,
 		break;
 	}
 
+del_ring_el:
 	mhi_del_ring_element(mhi_cntrl, mhi_ring);
 }
 
