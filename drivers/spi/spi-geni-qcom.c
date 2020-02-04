@@ -26,7 +26,6 @@
 #include <linux/msm_gpi.h>
 #include <linux/spi/spi.h>
 #include <linux/spi/spi-geni-qcom.h>
-#include <soc/qcom/boot_stats.h>
 
 #define SPI_NUM_CHIPSELECT	(4)
 #define SPI_XFER_TIMEOUT_MS	(250)
@@ -1670,7 +1669,6 @@ static int spi_geni_probe(struct platform_device *pdev)
 	struct platform_device *wrapper_pdev;
 	struct device_node *wrapper_ph_node;
 	bool rt_pri, slave_en;
-	char boot_marker[40];
 
 	spi = spi_alloc_master(&pdev->dev, sizeof(struct spi_geni_master));
 	if (!spi) {
@@ -1678,10 +1676,6 @@ static int spi_geni_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Failed to alloc spi struct\n");
 		goto spi_geni_probe_err;
 	}
-
-	snprintf(boot_marker, sizeof(boot_marker),
-			"M - DRIVER GENI_SPI Init");
-	place_marker(boot_marker);
 
 	platform_set_drvdata(pdev, spi);
 	geni_mas = spi_master_get_devdata(spi);
@@ -1885,9 +1879,6 @@ static int spi_geni_probe(struct platform_device *pdev)
 	}
 	ret = sysfs_create_file(&(geni_mas->dev->kobj),
 				&dev_attr_spi_slave_state.attr);
-	snprintf(boot_marker, sizeof(boot_marker),
-			"M - DRIVER GENI_SPI_%d Ready", spi->bus_num);
-	place_marker(boot_marker);
 
 	return ret;
 spi_geni_probe_unmap:
