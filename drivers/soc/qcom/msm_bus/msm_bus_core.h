@@ -337,7 +337,6 @@ int msm_bus_dbg_add_client(const struct msm_bus_client_handle *pdata);
 int msm_bus_dbg_rec_transaction(const struct msm_bus_client_handle *pdata,
 						u64 ab, u64 ib);
 void msm_bus_dbg_remove_client(const struct msm_bus_client_handle *pdata);
-void msm_bus_dbg_suspend_print_clients(void);
 
 #else
 static inline void msm_bus_dbg_client_data(struct msm_bus_scale_pdata *pdata,
@@ -365,9 +364,6 @@ static inline int
 msm_bus_dbg_add_client(const struct msm_bus_client_handle *pdata)
 {
 	return 0;
-}
-static inline void msm_bus_dbg_suspend_print_clients(void)
-{
 }
 #endif
 
