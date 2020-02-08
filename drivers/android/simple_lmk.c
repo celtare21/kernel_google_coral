@@ -224,6 +224,7 @@ static void scan_and_kill(void)
 
 	/* Kill the victims */
 	for (i = 0; i < nr_to_kill; i++) {
+		static const struct sched_param sched_zero_prio;
 		struct victim_info *victim = &victims[i];
 		struct task_struct *t, *vtsk = victim->tsk;
 
@@ -240,8 +241,8 @@ static void scan_and_kill(void)
 			set_tsk_thread_flag(t, TIF_MEMDIE);
 		rcu_read_unlock();
 
-		/* Increase the victim's priority to make it die faster */
-		set_user_nice(vtsk, MIN_NICE);
+		/* Elevate the victim to SCHED_RR with zero RT priority */
+		sched_setscheduler_nocheck(vtsk, SCHED_RR, &sched_zero_prio);
 
 		/* Allow the victim to run on any CPU. This won't schedule. */
 		set_cpus_allowed_ptr(vtsk, cpu_all_mask);
