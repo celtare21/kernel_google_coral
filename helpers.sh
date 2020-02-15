@@ -87,7 +87,9 @@ function kmake() {
 function mkzip() {
     echo "Copying new kernel files"
     echo " "
-    cp out/arch/arm64/boot/Image.lz4-dtb ../AnyKernel3/
+    cp out/arch/arm64/boot/Image.lz4 ../AnyKernel3/
+    cp out/arch/arm64/boot/dtbo.img ../AnyKernel3/
+    cp out/arch/arm64/boot/dts/google/qcom-base/sm8150-v2.dtb ../AnyKernel3/dtb
     cd ../AnyKernel3
     rm Artemis.zip
     zip -r9 Artemis.zip * -x .git README.me
