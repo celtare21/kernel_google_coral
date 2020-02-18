@@ -1095,8 +1095,6 @@ const char * const vmstat_text[] = {
 	"nr_dirtied",
 	"nr_written",
 	"nr_indirectly_reclaimable",
-	"nr_ion_heap",
-	"nr_ion_heap_pool",
 	"nr_gpu_heap",
 	"nr_kernel_misc_reclaimable",
 
