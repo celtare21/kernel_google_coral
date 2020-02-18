@@ -13,8 +13,7 @@ enum mm_event_type {
 	MM_COMPACTION = 3,
 	MM_RECLAIM = 4,
 	MM_SWP_FAULT = 5,
-	MM_KERN_ALLOC = 6,
-	MM_TYPE_NUM = 7,
+	MM_TYPE_NUM = 6,
 };
 
 struct mm_event_task {
@@ -44,10 +43,8 @@ struct mm_event_vmstat {
 #ifdef CONFIG_MM_EVENT_STAT
 void mm_event_task_init(struct task_struct *tsk);
 void mm_event_record(enum mm_event_type event, unsigned long s_jiffies);
-void mm_event_count(enum mm_event_type event, int count);
 #else
 static inline void mm_event_task_init(struct task_struct *tsk) {}
 static inline void mm_event_record(enum mm_event_type event, unsigned long s_jiffies) {}
-static inline void mm_event_count(enum mm_event_type event, int count) {}
 #endif /* _LINUX_MM_EVENT_H */
 #endif

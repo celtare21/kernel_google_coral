@@ -19,8 +19,7 @@ struct mm_event_vmstat;
 	{ MM_READ_IO,	"read_io" },                                    \
 	{ MM_COMPACTION, "compaction" },                                \
 	{ MM_RECLAIM, "reclaim" },					\
-	{ MM_SWP_FAULT, "swp_flt" },					\
-	{ MM_KERN_ALLOC, "kern_alloc" })
+	{ MM_SWP_FAULT, "swp_flt" })
 
 TRACE_EVENT(mm_event_record,
 

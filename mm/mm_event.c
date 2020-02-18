@@ -104,12 +104,6 @@ void mm_event_record(enum mm_event_type event, unsigned long s_jiffies)
 	record_stat();
 }
 
-void mm_event_count(enum mm_event_type event, int count)
-{
-	current->mm_event[event].count += count;
-	record_stat();
-}
-
 static struct dentry *mm_event_root;
 
 static int period_ms_set(void *data, u64 val)
