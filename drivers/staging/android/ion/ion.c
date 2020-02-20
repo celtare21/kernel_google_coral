@@ -1294,7 +1294,7 @@ struct ion_device *ion_device_create(void)
 	if (ret) {
 		pr_err("ion: failed to register misc device.\n");
 		kfree(idev);
-		return ret;
+		return ERR_PTR(ret);
 	}
 
 	idev->debug_root = debugfs_create_dir("ion", NULL);
