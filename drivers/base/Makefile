@@ -32,4 +32,3 @@ obj-y			+= test/
 
 ccflags-$(CONFIG_DEBUG_DRIVER) := -DDEBUG
 
-obj-$(CONFIG_ASSISTED_SUPERUSER) += superuser.o
