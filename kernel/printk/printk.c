@@ -114,14 +114,8 @@ static int __control_devkmsg(char *str)
 	if (!str)
 		return -EINVAL;
 
-	if (!strncmp(str, "on", 2) || !strncmp(str, "ratelimit", 9)) {
-		devkmsg_log = DEVKMSG_LOG_MASK_DEFAULT;
-		return 9;
-	} else if (!strncmp(str, "off", 3)) {
-		devkmsg_log = DEVKMSG_LOG_MASK_OFF;
-		return 3;
-	}
-	return -EINVAL;
+	devkmsg_log = DEVKMSG_LOG_MASK_OFF;
+	return 3;
 }
 
 static int __init control_devkmsg(char *str)
