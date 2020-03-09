@@ -48,12 +48,13 @@ int cam_context_shutdown(struct cam_context *ctx)
 		cmd.session_handle = ctx->session_hdl;
 		cmd.dev_handle = ctx->dev_hdl;
 		rc = cam_context_handle_release_dev(ctx, &cmd);
-		if (rc)
+		if (rc) {
 			CAM_ERR(CAM_CORE,
 				"context release failed for dev_name %s",
 				ctx->dev_name);
-		else
+		 } else {
 			cam_context_putref(ctx);
+		}
 	} else {
 		CAM_WARN(CAM_CORE,
 			"dev %s context id %u state %d invalid to release hdl",
@@ -62,11 +63,12 @@ int cam_context_shutdown(struct cam_context *ctx)
 	}
 
 	rc = cam_destroy_device_hdl(ctx->dev_hdl);
-	if (rc)
+	if (rc) {
 		CAM_ERR(CAM_CORE, "destroy device hdl failed for node %s",
 			ctx->dev_name);
-	else
+	} else {
 		ctx->dev_hdl = -1;
+	}
 
 	return rc;
 }
