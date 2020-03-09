@@ -24,6 +24,16 @@
 #include "iaxxx.h"
 #include "iaxxx-tunnel-priv.h"
 
+#ifdef dev_err
+#undef dev_err
+#define dev_err dev_dbg
+#endif
+
+#ifdef dev_info
+#undef dev_info
+#define dev_info dev_dbg
+#endif
+
 struct iaxxx_event_subscription {
 	u16 event_dst;
 	void *userdata;
