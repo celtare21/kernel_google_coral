@@ -580,12 +580,14 @@ static void __cam_isp_ctx_send_sof_timestamp(
 static int __cam_isp_ctx_reg_upd_in_epoch_state(
 	struct cam_isp_context *ctx_isp, void *evt_data)
 {
-	if (ctx_isp->frame_id == 1)
+	if (ctx_isp->frame_id == 1) {
 		CAM_DBG(CAM_ISP, "Reg update for early PCR");
-	else
+	} else {
 		CAM_WARN(CAM_ISP,
 			"Unexpected reg update in activated substate:%d for frame_id:%lld",
 			ctx_isp->substate_activated, ctx_isp->frame_id);
+	}
+
 	return 0;
 }
 

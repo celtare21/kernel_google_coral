@@ -69,10 +69,11 @@ static int __cam_jpeg_ctx_acquire_dev_in_available(struct cam_context *ctx,
 	int rc;
 
 	rc = cam_context_acquire_dev_to_hw(ctx, cmd);
-	if (rc)
+	if (rc) {
 		CAM_ERR(CAM_JPEG, "Unable to Acquire device %d", rc);
-	else
+	} else {
 		ctx->state = CAM_CTX_ACQUIRED;
+	}
 
 	return rc;
 }

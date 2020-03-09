@@ -2572,7 +2572,7 @@ static int debug_chg_health_rest_rate_write(void *data, u64 val)
 /* Adaptive Charging */
 DEFINE_SIMPLE_ATTRIBUTE(debug_chg_health_rest_rate_fops,
 			debug_chg_health_rest_rate_read,
-			debug_chg_health_rest_rate_write, "%u\n");
+			debug_chg_health_rest_rate_write, "%llu\n");
 
 /* Adaptive Charging */
 static int debug_chg_health_thr_soc_read(void *data, u64 *val)
@@ -2601,7 +2601,7 @@ static int debug_chg_health_thr_soc_write(void *data, u64 val)
 /* Adaptive Charging */
 DEFINE_SIMPLE_ATTRIBUTE(debug_chg_health_thr_soc_fops,
 			debug_chg_health_thr_soc_read,
-			debug_chg_health_thr_soc_write, "%u\n");
+			debug_chg_health_thr_soc_write, "%llu\n");
 
 /* Adaptive Charging */
 static int debug_chg_health_thr_volt_read(void *data, u64 *val)
@@ -2630,7 +2630,7 @@ static int debug_chg_health_thr_volt_write(void *data, u64 val)
 /* Adaptive Charging */
 DEFINE_SIMPLE_ATTRIBUTE(debug_chg_health_thr_volt_fops,
 			debug_chg_health_thr_volt_read,
-			debug_chg_health_thr_volt_write, "%u\n");
+			debug_chg_health_thr_volt_write, "%llu\n");
 
 /* Adaptive Charging */
 static int debug_chg_health_set_stage(void *data, u64 val)

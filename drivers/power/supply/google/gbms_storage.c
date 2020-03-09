@@ -505,7 +505,7 @@ static int gbms_storage_show_cache(struct seq_file *m, void *data)
 		slot = (struct gbms_storage_provider *)ce->provider;
 		seq_printf(m, " %s: %s", slot->name, tag2cstr(tname, ce->tag));
 		if (ce->count != 0)
-			seq_printf(m, "[%d:%d]", ce->addr, ce->count);
+			seq_printf(m, "[%ld:%ld]", ce->addr, ce->count);
 		seq_printf(m, "\n");
 	}
 
@@ -547,7 +547,7 @@ static void gbms_show_storage_provider(struct seq_file *m,
 			if (ret < 0)
 				continue;
 
-			seq_printf(m, "[%d,%d] ", addr, count);
+			seq_printf(m, "[%ld,%ld] ", addr, count);
 		}
 	}
 }
@@ -768,7 +768,7 @@ static void ct_dev_show(struct seq_file *s, const u8 *d, size_t count)
 
 	for (i = 0; i < count / 2; i++)
 		seq_printf(s, "%04x ", data[i]);
-	seq_printf(s, "\n", data[i]);
+	seq_printf(s, "\n");
 }
 
 struct gbms_storage_device *gbms_storage_create_device(const char *name,

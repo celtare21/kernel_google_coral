@@ -698,12 +698,13 @@ static int cam_req_mgr_probe(struct platform_device *pdev)
 			sizeof(struct cam_req_mgr_timer), 64,
 			SLAB_CONSISTENCY_CHECKS | SLAB_RED_ZONE |
 			SLAB_POISON | SLAB_STORE_USER, NULL);
-		if (!g_cam_req_mgr_timer_cachep)
+		if (!g_cam_req_mgr_timer_cachep) {
 			CAM_ERR(CAM_CRM,
 				"Failed to create kmem_cache for crm_timer");
-		else
+		} else {
 			CAM_DBG(CAM_CRM, "Name : %s",
 				g_cam_req_mgr_timer_cachep->name);
+		}
 	}
 
 	return rc;
