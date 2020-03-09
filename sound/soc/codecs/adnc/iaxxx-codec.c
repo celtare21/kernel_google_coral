@@ -46,6 +46,16 @@
 #include <linux/mfd/adnc/iaxxx-register-defs-pwr-mgmt.h>
 #include <linux/mfd/adnc/iaxxx-register-defs-gpio.h>
 
+#ifdef dev_err
+#undef dev_err
+#define dev_err dev_dbg
+#endif
+
+#ifdef dev_info
+#undef dev_info
+#define dev_info dev_dbg
+#endif
+
 #define IAXXX_MAX_RETRY 5
 #define IAXXX_MAX_PORTS		6
 #define IAXXX_MAX_PDM_PORTS	7
