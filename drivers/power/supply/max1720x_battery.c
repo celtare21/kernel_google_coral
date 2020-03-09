@@ -1614,7 +1614,7 @@ static int max1720x_get_cycle_count_offset(const struct max1720x_chip *chip)
 static int max1720x_get_cycle_count(struct max1720x_chip *chip)
 {
 	int err, cycle_count;
-	u16 temp;
+	u16 temp = 0;
 
 	err = REGMAP_READ(chip->regmap, MAX1720X_CYCLES, &temp);
 	if (err < 0)
@@ -2189,7 +2189,7 @@ static int max1720x_update_compare(struct regmap *map, int reg,
 static int max1720x_update_capacity(struct regmap *map, u16 mixcap, u16 repcap,
 				    u16 fullcaprep)
 {
-	u16 temp;
+	u16 temp = 0;
 	int err;
 
 	err = REGMAP_WRITE(map, MAX1720X_MIXCAP, mixcap);
@@ -2267,7 +2267,7 @@ static int max1720x_capacity_check(int fullcapnom, int cycle_count,
 /* 1 changed, 0 no changes, < 0 error*/
 static int max1720x_fixup_dxacc(int plugged, struct max1720x_chip *chip)
 {
-	u16 temp, vfsoc = 0, repsoc = 0, fullcapnom, mixcap, repcap, fcrep;
+	u16 temp, vfsoc = 0, repsoc = 0, fullcapnom = 0, mixcap, repcap, fcrep;
 	int cycle_count, capacity, new_capacity;
 	int err, loops;
 	int dpacc, dqacc;

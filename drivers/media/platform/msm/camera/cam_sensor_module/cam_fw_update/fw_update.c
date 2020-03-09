@@ -370,9 +370,9 @@ int getFWVersion(struct cam_sensor_ctrl_t *s_ctrl)
 	rc = camera_io_dev_read(&s_ctrl->io_master_info, RamAddr,
 		&UlReadVal, CAMERA_SENSOR_I2C_TYPE_WORD,
 		CAMERA_SENSOR_I2C_TYPE_DWORD);
-	if (rc < 0)
+	if (rc < 0) {
 		CAM_ERR(CAM_SENSOR, "[FW] read i2c failed");
-	else {
+	} else {
 		s_ctrl->ois_fw_ver = UlReadVal & 0xFF;
 		s_ctrl->vcm_fw_ver = UlReadVal & 0xFF;
 		CAM_INFO(CAM_SENSOR,
