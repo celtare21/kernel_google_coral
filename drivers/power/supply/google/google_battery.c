@@ -38,6 +38,16 @@
 #include <linux/debugfs.h>
 #endif
 
+#ifdef pr_info
+#undef pr_info
+#define pr_info pr_debug
+#endif
+
+#ifdef pr_err
+#undef pr_err
+#define pr_err pr_debug
+#endif
+
 #define BATT_DELAY_INIT_MS		250
 #define BATT_WORK_FAST_RETRY_CNT	30
 #define BATT_WORK_FAST_RETRY_MS		1000
