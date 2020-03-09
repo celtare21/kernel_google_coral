@@ -199,12 +199,13 @@ int cam_ife_csid_enable_ife_force_clock_on(struct cam_hw_soc_info  *soc_info,
 	rc = cam_cpas_reg_write(soc_private->cpas_handle, CAM_CPAS_REG_CPASTOP,
 		cpass_ife_force_clk_offset, 1, 1);
 
-	if (rc)
+	if (rc) {
 		CAM_ERR(CAM_ISP, "CPASS set IFE:%d Force clock On failed",
 			soc_info->index);
-	else
+	} else {
 		CAM_DBG(CAM_ISP, "CPASS set IFE:%d Force clock On",
 		soc_info->index);
+	}
 
 	return rc;
 }
@@ -227,12 +228,13 @@ int cam_ife_csid_disable_ife_force_clock_on(struct cam_hw_soc_info *soc_info,
 	rc = cam_cpas_reg_write(soc_private->cpas_handle, CAM_CPAS_REG_CPASTOP,
 		cpass_ife_force_clk_offset,  1, 0);
 
-	if (rc)
+	if (rc) {
 		CAM_ERR(CAM_ISP, "CPASS set IFE:%d Force clock Off failed",
 			soc_info->index);
-	else
+	} else {
 		CAM_DBG(CAM_ISP, "CPASS set IFE:%d Force clock off",
 		soc_info->index);
+	}
 
 	return rc;
 }

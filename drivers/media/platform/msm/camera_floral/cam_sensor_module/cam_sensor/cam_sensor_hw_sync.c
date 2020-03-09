@@ -89,7 +89,7 @@ static int32_t cam_sync_handle_sync_cmd(struct cam_sensor_ctrl_t *s_ctrl,
 	flags = cmd_set_sync->flags;
 	reg_info = &s_ctrl->hw_sync_ctrl.regs;
 
-	CAM_INFO(CAM_SENSOR, "cmd %d flags %d role %d data_handle 0x%x",
+	CAM_INFO(CAM_SENSOR, "cmd %d flags %d role %d data_handle 0x%llx",
 		cmd, flags,
 		cmd_set_sync->role, cmd_set_sync->data_handle);
 
@@ -165,10 +165,7 @@ struct cam_sensor_ctrl_t *cam_sensor_get_sensor_ctrl(
 		s_ctrl = (struct cam_sensor_ctrl_t *)
 			cam_get_device_priv(dev->dev_info.dev_hdl);
 
-		if (!s_ctrl)
-			CAM_ERR(CAM_SENSOR, "Invalid sensor dev_hdl.",
-				dev->dev_info.dev_hdl);
-		else
+		if (s_ctrl)
 			return s_ctrl;
 	}
 	return s_ctrl;
