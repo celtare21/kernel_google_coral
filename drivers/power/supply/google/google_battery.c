@@ -1220,7 +1220,7 @@ static int batt_chg_stats_cstr(char *buff, int size,
 			(verbose) ? ':' : ',');
 
 		len += scnprintf(&buff[len], size - len,
-			"%d.%d,%d,%d, %d,%d,%d, %d,%ld,%d, %d,%ld,%d, %d,%ld,%d",
+			"%d.%d,%d,%d, %d,%d,%d, %d,%lld,%d, %d,%lld,%d, %d,%lld,%d",
 				soc_in,
 				ce_data->tier_stats[i].soc_in & 0xff,
 				ce_data->tier_stats[i].cc_in,
@@ -1707,10 +1707,6 @@ static int msc_logic_health(struct batt_chg_health *rest,
 	}
 
 done_exit:
-	pr_info("MSC_HEALTH: now=%d deadline=%d ttf=%ld state=%d->%d fv_uv=%d, cc_max=%d\n",
-		now, rest->rest_deadline, (ttf_ret < 0) ? ttf_ret : ttf,
-		rest->rest_state, rest_state, fv_uv, cc_max);
-
 	/* msc_logic_* will vote on cc_max and fv_uv. The actual charge current
 	 * will be the minimum between the vote from MSC_LOGIC and health.
 	 */
@@ -2448,7 +2444,7 @@ static int debug_chg_health_rest_rate_write(void *data, u64 val)
 
 DEFINE_SIMPLE_ATTRIBUTE(debug_chg_health_rest_rate_fops,
 			debug_chg_health_rest_rate_read,
-			debug_chg_health_rest_rate_write, "%u\n");
+			debug_chg_health_rest_rate_write, "%llu\n");
 
 static int debug_chg_health_thr_soc_read(void *data, u64 *val)
 {
@@ -2474,7 +2470,7 @@ static int debug_chg_health_thr_soc_write(void *data, u64 val)
 
 DEFINE_SIMPLE_ATTRIBUTE(debug_chg_health_thr_soc_fops,
 			debug_chg_health_thr_soc_read,
-			debug_chg_health_thr_soc_write, "%u\n");
+			debug_chg_health_thr_soc_write, "%llu\n");
 
 static int debug_chg_health_thr_volt_read(void *data, u64 *val)
 {
@@ -2500,7 +2496,7 @@ static int debug_chg_health_thr_volt_write(void *data, u64 val)
 
 DEFINE_SIMPLE_ATTRIBUTE(debug_chg_health_thr_volt_fops,
 			debug_chg_health_thr_volt_read,
-			debug_chg_health_thr_volt_write, "%u\n");
+			debug_chg_health_thr_volt_write, "%llu\n");
 
 
 static int debug_chg_health_resting(void *data, u64 *val)
@@ -2516,7 +2512,7 @@ static int debug_chg_health_resting(void *data, u64 *val)
 
 DEFINE_SIMPLE_ATTRIBUTE(debug_chg_health_resting_fops,
 			debug_chg_health_resting,
-			NULL, "%u\n");
+			NULL, "%llu\n");
 
 static ssize_t debug_get_ssoc_uicurve(struct file *filp,
 					   char __user *buf,
@@ -2826,7 +2822,7 @@ static ssize_t batt_show_chg_deadline(struct device *dev,
 		deadline = batt_drv->chg_health.rest_deadline - now;
 	mutex_unlock(&batt_drv->chg_lock);
 
-	return scnprintf(buf, PAGE_SIZE, "%lld\n", (unsigned long)deadline);
+	return scnprintf(buf, PAGE_SIZE, "%ld\n", (unsigned long)deadline);
 }
 
 /* absolute deadline */
@@ -2863,10 +2859,6 @@ static ssize_t batt_set_chg_deadline(struct device *dev,
 	batt_health_set_chg_deadline(&batt_drv->chg_health,
 				     now + deadline_min);
 	mutex_unlock(&batt_drv->chg_lock);
-
-	pr_info("MSC_HEALTH deadline at %l, now=%l\n",
-		batt_drv->chg_health.rest_deadline,
-		now);
 
 	return count;
 }

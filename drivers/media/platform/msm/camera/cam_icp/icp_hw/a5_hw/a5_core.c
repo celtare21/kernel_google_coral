@@ -282,10 +282,11 @@ int cam_a5_init_hw(void *device_priv,
 	rc = cam_a5_enable_soc_resources(soc_info);
 	if (rc) {
 		CAM_ERR(CAM_ICP, "soc enable is failed: %d", rc);
-		if (cam_cpas_stop(core_info->cpas_handle))
+		if (cam_cpas_stop(core_info->cpas_handle)) {
 			CAM_ERR(CAM_ICP, "cpas stop is failed");
-		else
+		} else {
 			core_info->cpas_start = false;
+		}
 	}
 
 	return rc;
@@ -317,10 +318,11 @@ int cam_a5_deinit_hw(void *device_priv,
 		CAM_ERR(CAM_ICP, "soc disable is failed: %d", rc);
 
 	if (core_info->cpas_start) {
-		if (cam_cpas_stop(core_info->cpas_handle))
+		if (cam_cpas_stop(core_info->cpas_handle)) {
 			CAM_ERR(CAM_ICP, "cpas stop is failed");
-		else
+		} else {
 			core_info->cpas_start = false;
+		}
 	}
 
 	return rc;

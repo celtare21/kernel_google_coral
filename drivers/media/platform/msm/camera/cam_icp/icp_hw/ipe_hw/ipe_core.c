@@ -92,10 +92,11 @@ int cam_ipe_init_hw(void *device_priv,
 	rc = cam_ipe_enable_soc_resources(soc_info);
 	if (rc) {
 		CAM_ERR(CAM_ICP, "soc enable is failed : %d", rc);
-		if (cam_cpas_stop(core_info->cpas_handle))
+		if (cam_cpas_stop(core_info->cpas_handle)) {
 			CAM_ERR(CAM_ICP, "cpas stop is failed");
-		else
+		} else {
 			core_info->cpas_start = false;
+		}
 	} else {
 		core_info->clk_enable = true;
 	}
@@ -130,10 +131,11 @@ int cam_ipe_deinit_hw(void *device_priv,
 	core_info->clk_enable = false;
 
 	if (core_info->cpas_start) {
-		if (cam_cpas_stop(core_info->cpas_handle))
+		if (cam_cpas_stop(core_info->cpas_handle)) {
 			CAM_ERR(CAM_ICP, "cpas stop is failed");
-		else
+		} else {
 			core_info->cpas_start = false;
+		}
 	}
 
 	return rc;
@@ -366,10 +368,11 @@ int cam_ipe_process_cmd(void *device_priv, uint32_t cmd_type,
 					hw_info->pwr_ctrl, true, 0x0);
 			}
 			rc = cam_ipe_toggle_clk(soc_info, true);
-			if (rc)
+			if (rc) {
 				CAM_ERR(CAM_ICP, "Enable failed");
-			else
+			} else {
 				core_info->clk_enable = true;
+			}
 			if (clk_upd_cmd->ipe_bps_pc_enable) {
 				rc = cam_ipe_handle_resume(ipe_dev);
 				if (rc)

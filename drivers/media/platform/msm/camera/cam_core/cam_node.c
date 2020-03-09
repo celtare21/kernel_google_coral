@@ -378,11 +378,12 @@ static int __cam_node_handle_release_dev(struct cam_node *node,
 
 destroy_dev_hdl:
 	rc = cam_destroy_device_hdl(release->dev_handle);
-	if (rc)
+	if (rc) {
 		CAM_ERR(CAM_CORE, "destroy device hdl failed for node %s",
 			node->name);
-	else
+	} else {
 		ctx->dev_hdl = -1;
+	}
 
 	CAM_DBG(CAM_CORE, "[%s] Release ctx_id=%d, refcount=%d",
 		node->name, ctx->ctx_id,

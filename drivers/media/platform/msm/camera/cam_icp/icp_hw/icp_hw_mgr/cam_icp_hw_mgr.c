@@ -3802,11 +3802,12 @@ static int cam_icp_packet_generic_blob_handler(void *user_data,
 			ctx_data->icp_dev_io_info.io_config_cmd_handle,
 			icp_hw_mgr.iommu_hdl,
 			blob->io_buf_addr, &io_buf_size);
-		if (rc)
+		if (rc) {
 			CAM_ERR(CAM_ICP, "Failed in blob update");
-		else
+		} else {
 			CAM_DBG(CAM_ICP, "io buf addr %llu",
 				*blob->io_buf_addr);
+		}
 		break;
 
 	case CAM_ICP_CMD_GENERIC_BLOB_FW_MEM_MAP:
