@@ -23,6 +23,10 @@
 #include "ia8508a-memory-map.h"
 #include "iaxxx.h"
 
+#ifdef pr_err
+#undef pr_err
+#define pr_err pr_debug
+#endif
 
 #define IAXXX_SYNC_RETRY	15
 
