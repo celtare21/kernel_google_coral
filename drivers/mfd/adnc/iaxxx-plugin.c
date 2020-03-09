@@ -27,6 +27,16 @@
 #include "iaxxx-btp.h"
 #include "ia8508a-memory-map.h"
 
+#ifdef dev_err
+#undef dev_err
+#define dev_err dev_dbg
+#endif
+
+#ifdef dev_info
+#undef dev_info
+#define dev_info dev_dbg
+#endif
+
 #define IAXXX_BITS_SWAP	32
 #define IAXXX_BLK_HEADER_SIZE 4
 #define IAXXX_BIN_INFO_SEC_ADDR	0xF1F00000

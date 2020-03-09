@@ -34,6 +34,16 @@
 #include "iaxxx-btp.h"
 #include "iaxxx.h"
 
+#ifdef dev_err
+#undef dev_err
+#define dev_err dev_dbg
+#endif
+
+#ifdef dev_info
+#undef dev_info
+#define dev_info dev_dbg
+#endif
+
 #define IAXXX_PROC_STATUS_MASK	0x34
 
 #define IAXXX_PWR_DWN_VAL 0x01C00050
