@@ -31,6 +31,16 @@
 #include "../qcom/smb5-reg.h"
 #include "../qcom/smb5-lib.h"
 
+#ifdef pr_info
+#undef pr_info
+#define pr_info pr_debug
+#endif
+
+#ifdef pr_err
+#undef pr_err
+#define pr_err pr_debug
+#endif
+
 #define BIAS_STS_READY	BIT(0)
 
 struct bms_dev {
