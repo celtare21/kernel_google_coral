@@ -36,6 +36,16 @@
 #include "google_psy.h"
 #include "logbuffer.h"
 
+#ifdef pr_info
+#undef pr_info
+#define pr_info pr_debug
+#endif
+
+#ifdef pr_err
+#undef pr_err
+#define pr_err pr_debug
+#endif
+
 #ifdef CONFIG_DEBUG_FS
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
