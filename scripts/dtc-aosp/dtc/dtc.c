@@ -179,7 +179,7 @@ int main(int argc, char *argv[])
 	int outversion = DEFAULT_FDT_VERSION;
 	long long cmdline_boot_cpuid = -1;
 
-	quiet      = 0;
+	quiet      = 1;
 	reservenum = 0;
 	minsize    = 0;
 	padsize    = 0;
@@ -221,7 +221,7 @@ int main(int argc, char *argv[])
 			force = true;
 			break;
 		case 'q':
-			quiet++;
+			quiet = 1;
 			break;
 		case 'b':
 			cmdline_boot_cpuid = strtoll(optarg, NULL, 0);
