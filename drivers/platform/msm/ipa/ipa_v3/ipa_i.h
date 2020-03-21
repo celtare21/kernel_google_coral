@@ -3152,7 +3152,7 @@ static inline int ipa_mpm_panic_handler(char *buf, int size)
 
 static inline int ipa3_get_mhip_gsi_stats(struct ipa_uc_dbg_ring_stats *stats)
 {
-	return 0;
+	return -1;
 }
 
 static inline int ipa3_mpm_enable_adpl_over_odl(bool enable)

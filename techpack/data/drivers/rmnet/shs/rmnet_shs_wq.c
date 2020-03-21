@@ -444,7 +444,7 @@ void rmnet_shs_wq_create_new_flow(struct rmnet_shs_skbn_s *node_p)
 static u64 rmnet_shs_wq_get_flow_avg_pps(struct rmnet_shs_wq_hstat_s *hnode)
 {
 	u64 avg_pps, mov_avg_pps;
-	u16 new_weight, old_weight;
+	u16 new_weight = 0, old_weight = 0;
 
 	if (!hnode) {
 		rmnet_shs_crit_err[RMNET_SHS_WQ_INVALID_PTR_ERR]++;
@@ -1208,13 +1208,6 @@ int rmnet_shs_wq_check_cpu_move_for_ep(u16 current_cpu, u16 dest_cpu,
 	}
 
 	cpu_in_rps_mask = (1 << dest_cpu) & ep->rps_config_msk;
-
-	rm_err("SHS_MASK:  cur cpu [%d] | dest_cpu [%d] | "
-	       "cpu isolation_mask = 0x%x | ep_rps_mask = 0x%x | "
-	       "cpu_online(dest) = %d cpu_in_rps_mask = %d | "
-	       "cpu isolated(dest) = %d",
-	       current_cpu, dest_cpu, __cpu_isolated_mask, ep->rps_config_msk,
-	       cpu_online(dest_cpu), cpu_in_rps_mask, cpu_isolated(dest_cpu));
 
 	/* We cannot move to dest cpu if the cur cpu is the same,
 	 * the dest cpu is offline, dest cpu is not in the rps mask,
@@ -2140,7 +2133,7 @@ int rmnet_shs_wq_get_max_flows_per_cluster(u16 cpu)
 		end_core = MAX_CPUS;
 	}
 
-	for (start_core; start_core < end_core; start_core++) {
+	for (; start_core < end_core; start_core++) {
 		cpu_flows = rmnet_shs_wq_get_num_cpu_flows(start_core);
 		if (cpu_flows > max_flows)
 			max_flows = cpu_flows;

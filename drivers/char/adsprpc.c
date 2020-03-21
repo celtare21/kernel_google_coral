@@ -4427,7 +4427,7 @@ static int __init fastrpc_device_init(void)
 	me->wake_source = wakeup_source_register(NULL, "adsprpc");
 	VERIFY(err, !IS_ERR_OR_NULL(me->wake_source));
 	if (err) {
-		pr_err("adsprpc: Error: %s: wakeup_source_register failed with err %d\n",
+		pr_err("adsprpc: Error: %s: wakeup_source_register failed with err %ld\n",
 					__func__, PTR_ERR(me->wake_source));
 		goto device_create_bail;
 	}
