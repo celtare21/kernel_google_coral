@@ -1716,7 +1716,7 @@ static void dump_page_table(struct gasket_page_table *pg_tbl,
 			    struct seq_file *s)
 {
 	struct gasket_page_table_entry *ptes;
-	struct mmu_dump_range range;
+	struct mmu_dump_range range = { 0 };
 	struct mmu_dump_stats stats;
 	uint i, j;
 

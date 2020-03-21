@@ -4043,11 +4043,6 @@ static int ufshcd_queuecommand(struct Scsi_Host *host, struct scsi_cmnd *cmd)
 
 	err = ufshcd_comp_scsi_upiu(hba, lrbp);
 	if (err) {
-		if (err != -EAGAIN)
-			dev_err(hba->dev,
-				"%s: failed to compose upiu %d cmd:0x%08x lun:%d\n",
-				__func__, err, cmd, lrbp->lun);
-
 		lrbp->cmd = NULL;
 		clear_bit_unlock(tag, &hba->lrb_in_use);
 		ufshcd_release_all(hba);
