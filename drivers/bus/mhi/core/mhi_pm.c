@@ -1046,8 +1046,8 @@ void mhi_control_error(struct mhi_controller *mhi_cntrl)
 	/* copy subsystem failure reason string if supported */
 	if (sfr_info && sfr_info->buf_addr) {
 		memcpy(sfr_info->str, sfr_info->buf_addr, sfr_info->len);
-		MHI_CNTRL_ERR("mhi:%s sfr: %s\n", mhi_cntrl->name,
-				sfr_info->buf_addr);
+		pr_err("mhi: %s sfr: %p\n", mhi_cntrl->name,
+		       sfr_info->buf_addr);
 	}
 
 	/* link is not down if device is in RDDM */
