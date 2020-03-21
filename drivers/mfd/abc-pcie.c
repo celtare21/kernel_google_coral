@@ -438,7 +438,7 @@ int memory_config_write(u32 offset, u32 len, u32 data)
 #if IS_ENABLED(CONFIG_AIRBRUSH_SM)
 u32 abc_pcie_get_linkspeed(void)
 {
-	u32 link_status;
+	u32 link_status = 0;
 
 	abc_pcie_config_read(ABC_PCIE_DBI_BASE + LINK_CONTROL_LINK_STATUS_REG,
 				0x0, &link_status);
@@ -447,8 +447,8 @@ u32 abc_pcie_get_linkspeed(void)
 
 u32 abc_pcie_get_linkstate(void)
 {
-	u32 link_state;
-	u32 l1_substate, val;
+	u32 link_state = 0;
+	u32 l1_substate = 0, val;
 
 	abc_pcie_config_read(ABC_PCIE_DBI_BASE + LINK_CONTROL_LINK_STATUS_REG,
 			 0x0, &link_state);
