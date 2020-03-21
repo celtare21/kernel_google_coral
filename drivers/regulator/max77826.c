@@ -418,7 +418,7 @@ static int max77826_ldo_set_voltage(struct regulator_dev *rdev,
 	int rid = rdev_get_id(rdev);
 	int reg, shift, mask, ret;
 	int i;
-	u8 val;
+	u8 val = 0;
 
 	desc = reg_voltage_map[rid];
 

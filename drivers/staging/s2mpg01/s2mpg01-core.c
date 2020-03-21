@@ -109,7 +109,7 @@ EXPORT_SYMBOL_GPL(s2mpg01_toggle_pon);
 
 int s2mpg01_dump_regs(struct s2mpg01_core *ddata)
 {
-	u8 reg_data;
+	u8 reg_data = 0;
 	int i;
 
 	for (i = 0; i <= 0x40; i++) {
@@ -334,7 +334,7 @@ EXPORT_SYMBOL_GPL(s2mpg01_read_adc_chan);
 
 bool s2mpg01_boost_mode_status(struct s2mpg01_core *ddata)
 {
-	u8 reg_data;
+	u8 reg_data = 0;
 	int offset = 7; /* bit[7]: SYNC_L3_EN*/
 
 	s2mpg01_read_byte(ddata, S2MPG01_REG_BOOST_CTRL, &reg_data);

@@ -1994,7 +1994,7 @@ static int max1720x_get_property(struct power_supply *psy,
 	struct regmap *map = chip->regmap;
 	u16 data = 0;
 	int err = 0;
-	int idata;
+	int idata = 0;
 
 	pm_runtime_get_sync(chip->dev);
 	if (!chip->init_complete || !chip->resume_complete) {
@@ -2506,7 +2506,7 @@ static void max1720x_fixup_capacity(int plugged, struct max1720x_chip *chip)
 
 static void max1720x_dyn_filtercfg(int plugged, struct max1720x_chip *chip)
 {
-	u16 data, new_filtercfg;
+	u16 data = 0, new_filtercfg;
 	int temp, err, vfsoc;
 
 	if (chip->ini_filtercfg == -1)

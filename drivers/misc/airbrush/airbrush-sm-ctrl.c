@@ -1238,7 +1238,7 @@ static int ab_sm_update_chip_state(struct ab_state_context *sc)
 	int ret;
 	struct chip_to_block_map *dest_map;
 	struct chip_to_block_map *last_map;
-	struct chip_to_block_map *active_map;
+	struct chip_to_block_map *active_map = NULL;
 	enum chip_state prev_state = sc->curr_chip_substate_id;
 
 	ab_sm_zero_ts(sc);
