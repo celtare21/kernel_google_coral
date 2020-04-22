@@ -673,25 +673,25 @@ static int cpuidle_latency_notify(struct notifier_block *b,
 	static unsigned long prev_latency[NR_CPUS] = {
 		[0 ... NR_CPUS - 1] = PM_QOS_CPU_DMA_LAT_DEFAULT_VALUE
 	};
-	struct cpumask update_mask = CPU_MASK_NONE;
+	unsigned long update_mask = 0;
 	unsigned int cpu;
 
 	/* Only send an IPI when the CPU latency requirement is tightened */
 	for_each_cpu(cpu, v) {
 		if (l < prev_latency[cpu])
-			cpumask_set_cpu(cpu, &update_mask);
+			update_mask |= BIT(cpu);
 		prev_latency[cpu] = l;
 	}
 
-	if (!cpumask_empty(&update_mask)) {
-		unsigned long idle_cpus = atomic_read(&idle_cpu_mask);
-		cpumask_and(&update_mask, &update_mask, to_cpumask(&idle_cpus));
-		cpumask_andnot(&update_mask, &update_mask, cpu_isolated_mask);
+	if (!update_mask)
+		return NOTIFY_OK;
 
-		/* Notifier is called with preemption disabled */
-		arch_send_call_function_ipi_mask(&update_mask);
-	}
+	update_mask &= atomic_read(&idle_cpu_mask);
+	update_mask &= ~*cpumask_bits(cpu_isolated_mask);
 
+	/* Notifier is called with preemption disabled */
+	if (update_mask)
+		arch_send_call_function_ipi_mask(to_cpumask(&update_mask));
 	return NOTIFY_OK;
 }
 
