@@ -1220,7 +1220,7 @@ static int batt_chg_stats_cstr(char *buff, int size,
 			(verbose) ? ':' : ',');
 
 		len += scnprintf(&buff[len], size - len,
-			"%d.%d,%d,%d, %d,%d,%d, %d,%ld,%d, %d,%ld,%d, %d,%ld,%d",
+			"%d.%d,%d,%d, %d,%d,%d, %d,%lld,%d, %d,%lld,%d, %d,%lld,%d",
 				soc_in,
 				ce_data->tier_stats[i].soc_in & 0xff,
 				ce_data->tier_stats[i].cc_in,
@@ -1742,10 +1742,6 @@ static bool msc_logic_health(struct batt_chg_health *rest,
 done_exit:
 	/* send a power supply event when rest_state changes */
 	changed = rest->rest_state != rest_state;
-	if (changed)
-		pr_info("MSC_HEALTH: now=%d deadline=%d ttf=%ld state=%d->%d fv_uv=%d, cc_max=%d\n",
-			now, rest->rest_deadline, (ttf_ret < 0) ? ttf_ret : ttf,
-			rest->rest_state, rest_state, fv_uv, cc_max);
 
 	/* msc_logic_* will vote on cc_max and fv_uv. */
 	rest->rest_state = rest_state;
@@ -2399,7 +2395,7 @@ static int debug_get_ssoc_gdf(void *data, u64 *val)
 	return 0;
 }
 
-DEFINE_SIMPLE_ATTRIBUTE(debug_ssoc_gdf_fops, debug_get_ssoc_gdf, NULL, "%u\n");
+DEFINE_SIMPLE_ATTRIBUTE(debug_ssoc_gdf_fops, debug_get_ssoc_gdf, NULL, "%llu\n");
 
 
 static int debug_get_ssoc_uic(void *data, u64 *val)
@@ -2409,7 +2405,7 @@ static int debug_get_ssoc_uic(void *data, u64 *val)
 	return 0;
 }
 
-DEFINE_SIMPLE_ATTRIBUTE(debug_ssoc_uic_fops, debug_get_ssoc_uic, NULL, "%u\n");
+DEFINE_SIMPLE_ATTRIBUTE(debug_ssoc_uic_fops, debug_get_ssoc_uic, NULL, "%llu\n");
 
 static int debug_get_ssoc_rls(void *data, u64 *val)
 {
@@ -2444,7 +2440,7 @@ static int debug_set_ssoc_rls(void *data, u64 val)
 }
 
 DEFINE_SIMPLE_ATTRIBUTE(debug_ssoc_rls_fops,
-				debug_get_ssoc_rls, debug_set_ssoc_rls, "%u\n");
+				debug_get_ssoc_rls, debug_set_ssoc_rls, "%llu\n");
 
 
 static ssize_t debug_get_ssoc_uicurve(struct file *filp,
@@ -2505,7 +2501,7 @@ static int debug_force_psy_update(void *data, u64 val)
 }
 
 DEFINE_SIMPLE_ATTRIBUTE(debug_force_psy_update_fops,
-				NULL, debug_force_psy_update, "%u\n");
+				NULL, debug_force_psy_update, "%llu\n");
 
 /* Adaptive Charging */
 static int debug_chg_health_rest_rate_read(void *data, u64 *val)
@@ -2534,7 +2530,7 @@ static int debug_chg_health_rest_rate_write(void *data, u64 val)
 /* Adaptive Charging */
 DEFINE_SIMPLE_ATTRIBUTE(debug_chg_health_rest_rate_fops,
 			debug_chg_health_rest_rate_read,
-			debug_chg_health_rest_rate_write, "%u\n");
+			debug_chg_health_rest_rate_write, "%llu\n");
 
 /* Adaptive Charging */
 static int debug_chg_health_thr_soc_read(void *data, u64 *val)
@@ -2563,7 +2559,7 @@ static int debug_chg_health_thr_soc_write(void *data, u64 val)
 /* Adaptive Charging */
 DEFINE_SIMPLE_ATTRIBUTE(debug_chg_health_thr_soc_fops,
 			debug_chg_health_thr_soc_read,
-			debug_chg_health_thr_soc_write, "%u\n");
+			debug_chg_health_thr_soc_write, "%llu\n");
 
 /* Adaptive Charging */
 static int debug_chg_health_thr_volt_read(void *data, u64 *val)
@@ -2592,7 +2588,7 @@ static int debug_chg_health_thr_volt_write(void *data, u64 val)
 /* Adaptive Charging */
 DEFINE_SIMPLE_ATTRIBUTE(debug_chg_health_thr_volt_fops,
 			debug_chg_health_thr_volt_read,
-			debug_chg_health_thr_volt_write, "%u\n");
+			debug_chg_health_thr_volt_write, "%llu\n");
 
 /* Adaptive Charging */
 static int debug_chg_health_set_stage(void *data, u64 val)
@@ -2619,7 +2615,7 @@ static int debug_chg_health_set_stage(void *data, u64 val)
 
 /* Adaptive Charging */
 DEFINE_SIMPLE_ATTRIBUTE(debug_chg_health_stage_fops, NULL,
-			debug_chg_health_set_stage, "%u\n");
+			debug_chg_health_set_stage, "%llu\n");
 #endif
 
 /* ------------------------------------------------------------------------- */
@@ -2889,7 +2885,7 @@ static ssize_t batt_show_chg_deadline(struct device *dev,
 
 	mutex_unlock(&batt_drv->chg_lock);
 
-	return scnprintf(buf, PAGE_SIZE, "%lld\n", (unsigned long)deadline);
+	return scnprintf(buf, PAGE_SIZE, "%ld\n", (unsigned long)deadline);
 }
 
 /* userspace restore the TTF data with this */
@@ -2919,10 +2915,6 @@ static ssize_t batt_set_chg_deadline(struct device *dev,
 
 	if (changed)
 		power_supply_changed(batt_drv->psy);
-
-	pr_info("MSC_HEALTH deadline at %ld, now=%ld\n",
-		batt_drv->chg_health.rest_deadline,
-		now);
 
 	return count;
 }
