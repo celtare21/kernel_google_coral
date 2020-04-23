@@ -9,7 +9,7 @@
 BUILD_DIR="/home/ohshitvladneedsanotherone"
 
 # Path to executables in Clang toolchain
-clang_bin="$BUILD_DIR/android/linux-x86/clang-r370808/bin"
+clang_bin="$BUILD_DIR/android/linux-x86/clang-r377782b/bin"
 
 # 64-bit GCC toolchain prefix
 gcc_prefix64="$BUILD_DIR/android/aarch64-linux-android-4.9/bin/aarch64-linux-android-"
