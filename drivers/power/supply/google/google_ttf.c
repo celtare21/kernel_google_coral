@@ -156,7 +156,7 @@ static int ttf_pwr_ratio(const struct batt_ttf_stats *stats,
 
 		temp_idx = gbms_msc_temp_idx(profile, t_avg);
 
-		pr_debug("%d: temp_idx=%d t_avg=%ld sum=%ld elap=%d\n",
+		pr_debug("%d: temp_idx=%d t_avg=%lld sum=%lld elap=%d\n",
 			soc, temp_idx, t_avg,
 			ce_data->tier_stats[vbatt_idx].temp_sum,
 			elap);
@@ -496,7 +496,7 @@ void ttf_soc_init(struct ttf_soc_stats *dst)
 
 /* Tier estimates ---------------------------------------------------------  */
 
-#define TTF_STATS_FMT "[%d,%d %d %ld]"
+#define TTF_STATS_FMT "[%hd,%d %d %ld]"
 
 #define BATT_TTF_TS_VALID(ts) \
 	(ts->cc_total != 0 && ts->avg_time != 0)
@@ -528,22 +528,19 @@ static int ttf_tier_sscan(struct batt_ttf_stats *stats,
 			  const char *buff,
 			  size_t size)
 {
-	int i, j, t, cnt, len = 0;
+	int i, len = 0;
 
-	memset(&stats->tier_stats, 0, sizeof(*stats));
+	memset(&stats->tier_stats, 0, sizeof(stats->tier_stats));
 
-	cnt = sscanf(&buff[len], "%d:", &t);
-	if (t != i)
-		i = t - 1;
 	while (buff[len] != '[' && len < size)
 		len++;
 
-	for (j = 0; j < GBMS_STATS_TIER_COUNT; j++) {
-		cnt = sscanf(&buff[len], TTF_STATS_FMT,
-			&stats->tier_stats[j].soc_in,
-			&stats->tier_stats[j].cc_in,
-			&stats->tier_stats[j].cc_total,
-			&stats->tier_stats[j].avg_time);
+	for (i = 0; i < GBMS_STATS_TIER_COUNT; i++) {
+		(void)sscanf(&buff[len], TTF_STATS_FMT,
+			&stats->tier_stats[i].soc_in,
+			&stats->tier_stats[i].cc_in,
+			&stats->tier_stats[i].cc_total,
+			&stats->tier_stats[i].avg_time);
 
 		len += sizeof(TTF_STATS_FMT) - 1;
 	}
@@ -893,7 +890,7 @@ int ttf_stats_init(struct batt_ttf_stats *stats,
 {
 	u32 value;
 	int i, soc, ret;
-	struct ttf_adapter_stats as;
+	struct ttf_adapter_stats as = { 0 };
 
 	memset(stats, 0, sizeof(*stats));
 	stats->ttf_fake = -1;
