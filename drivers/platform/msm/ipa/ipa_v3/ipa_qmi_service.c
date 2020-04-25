@@ -1381,13 +1381,25 @@ int ipa3_qmi_filter_notify_send(
 		return -EINVAL;
 	}
 
+	if (req->rule_id_ex_len == 0) {
+		IPAWANDBG(" delete UL filter rule for pipe %d\n",
+		req->source_pipe_index);
+	} else if (req->rule_id_ex_len > QMI_IPA_MAX_FILTERS_EX2_V01) {
+		IPAWANERR(" UL filter rule for pipe %d exceed max (%u)\n",
+		req->source_pipe_index,
+		req->rule_id_ex_len);
+		return -EINVAL;
+	}
+
 	if (req->install_status != IPA_QMI_RESULT_SUCCESS_V01) {
 		IPAWANERR(" UL filter rule for pipe %d install_status = %d\n",
 			req->source_pipe_index, req->install_status);
 		return -EINVAL;
-	} else if (req->rule_id_valid != 1) {
-		IPAWANERR(" UL filter rule for pipe %d rule_id_valid = %d\n",
-			req->source_pipe_index, req->rule_id_valid);
+	} else if ((req->rule_id_valid != 1) &&
+		(req->rule_id_ex_valid != 1)) {
+		IPAWANERR(" UL filter rule for pipe %d rule_id_valid = %d/%d\n",
+			req->source_pipe_index, req->rule_id_valid,
+			req->rule_id_ex_valid);
 		return -EINVAL;
 	} else if (req->source_pipe_index >= ipa3_ctx->ipa_num_pipes) {
 		IPAWANDBG(
@@ -1688,63 +1700,53 @@ static struct qmi_msg_handler server_handlers[] = {
 		.type = QMI_REQUEST,
 		.msg_id = QMI_IPA_INDICATION_REGISTER_REQ_V01,
 		.ei = ipa3_indication_reg_req_msg_data_v01_ei,
-		.decoded_size =
-			QMI_IPA_INDICATION_REGISTER_REQ_MAX_MSG_LEN_V01,
+		.decoded_size = sizeof(struct ipa_indication_reg_req_msg_v01),
 		.fn = ipa3_handle_indication_req,
 	},
 	{
 		.type = QMI_REQUEST,
 		.msg_id = QMI_IPA_INSTALL_FILTER_RULE_REQ_V01,
 		.ei = ipa3_install_fltr_rule_req_msg_data_v01_ei,
-		.decoded_size =
-			QMI_IPA_INSTALL_FILTER_RULE_REQ_MAX_MSG_LEN_V01,
+		.decoded_size = sizeof(
+			struct ipa_install_fltr_rule_req_msg_v01),
 		.fn = ipa3_handle_install_filter_rule_req,
 	},
 	{
 		.type = QMI_REQUEST,
 		.msg_id = QMI_IPA_FILTER_INSTALLED_NOTIF_REQ_V01,
 		.ei = ipa3_fltr_installed_notif_req_msg_data_v01_ei,
-		.decoded_size =
-			QMI_IPA_FILTER_INSTALLED_NOTIF_REQ_MAX_MSG_LEN_V01,
+		.decoded_size = sizeof(
+			struct ipa_fltr_installed_notif_req_msg_v01),
 		.fn = ipa3_handle_filter_installed_notify_req,
 	},
 	{
 		.type = QMI_REQUEST,
 		.msg_id = QMI_IPA_CONFIG_REQ_V01,
 		.ei = ipa3_config_req_msg_data_v01_ei,
-		.decoded_size = QMI_IPA_CONFIG_REQ_MAX_MSG_LEN_V01,
+		.decoded_size = sizeof(struct ipa_config_req_msg_v01),
 		.fn = handle_ipa_config_req,
 	},
 	{
 		.type = QMI_REQUEST,
 		.msg_id = QMI_IPA_INIT_MODEM_DRIVER_CMPLT_REQ_V01,
 		.ei = ipa3_init_modem_driver_cmplt_req_msg_data_v01_ei,
-		.decoded_size =
-			QMI_IPA_INIT_MODEM_DRIVER_CMPLT_REQ_MAX_MSG_LEN_V01,
-		.fn = ipa3_handle_modem_init_cmplt_req,
-	},
-	{
-		.type = QMI_REQUEST,
-		.msg_id = QMI_IPA_INIT_MODEM_DRIVER_CMPLT_REQ_V01,
-		.ei = ipa3_init_modem_driver_cmplt_req_msg_data_v01_ei,
-		.decoded_size =
-			QMI_IPA_INIT_MODEM_DRIVER_CMPLT_REQ_MAX_MSG_LEN_V01,
+		.decoded_size = sizeof(
+			struct ipa_init_modem_driver_cmplt_req_msg_v01),
 		.fn = ipa3_handle_modem_init_cmplt_req,
 	},
 	{
 		.type = QMI_REQUEST,
 		.msg_id = QMI_IPA_MHI_ALLOC_CHANNEL_REQ_V01,
 		.ei = ipa_mhi_alloc_channel_req_msg_v01_ei,
-		.decoded_size =
-			IPA_MHI_ALLOC_CHANNEL_REQ_MSG_V01_MAX_MSG_LEN,
+		.decoded_size = sizeof(
+			struct ipa_mhi_alloc_channel_req_msg_v01),
 		.fn = ipa3_handle_mhi_alloc_channel_req,
 	},
 	{
 		.type = QMI_REQUEST,
 		.msg_id = QMI_IPA_MHI_CLK_VOTE_REQ_V01,
 		.ei = ipa_mhi_clk_vote_req_msg_v01_ei,
-		.decoded_size =
-			IPA_MHI_CLK_VOTE_REQ_MSG_V01_MAX_MSG_LEN,
+		.decoded_size = sizeof(struct ipa_mhi_clk_vote_req_msg_v01),
 		.fn = ipa3_handle_mhi_vote_req,
 	},
 
@@ -1761,24 +1763,23 @@ static struct qmi_msg_handler client_handlers[] = {
 		.type = QMI_INDICATION,
 		.msg_id = QMI_IPA_DATA_USAGE_QUOTA_REACHED_IND_V01,
 		.ei = ipa3_data_usage_quota_reached_ind_msg_data_v01_ei,
-		.decoded_size =
-			QMI_IPA_DATA_USAGE_QUOTA_REACHED_IND_MAX_MSG_LEN_V01,
+		.decoded_size = sizeof(
+			struct ipa_data_usage_quota_reached_ind_msg_v01),
 		.fn = ipa3_q6_clnt_quota_reached_ind_cb,
 	},
 	{
 		.type = QMI_INDICATION,
 		.msg_id = QMI_IPA_INSTALL_UL_FIREWALL_RULES_IND_V01,
 		.ei = ipa3_install_fltr_rule_req_msg_data_v01_ei,
-		.decoded_size =
-			QMI_IPA_INSTALL_UL_FIREWALL_RULES_IND_MAX_MSG_LEN_V01,
+		.decoded_size = sizeof(
+			struct ipa_configure_ul_firewall_rules_ind_msg_v01),
 		.fn = ipa3_q6_clnt_install_firewall_rules_ind_cb,
 	},
 	{
 		.type = QMI_INDICATION,
 		.msg_id = QMI_IPA_BW_CHANGE_INDICATION_V01,
 		.ei = ipa_bw_change_ind_msg_v01_ei,
-		.decoded_size =
-			IPA_BW_CHANGE_IND_MSG_V01_MAX_MSG_LEN,
+		.decoded_size = sizeof(struct ipa_bw_change_ind_msg_v01),
 		.fn = ipa3_q6_clnt_bw_vhang_ind_cb,
 	},
 };
