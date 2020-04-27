@@ -3063,6 +3063,18 @@ static ssize_t ufshcd_hibern8_on_idle_delay_store(struct device *dev,
 	return count;
 }
 
+static ssize_t ufshcd_hibern8_on_idle_delay_show_stub(struct device *dev,
+                struct device_attribute *attr, char *buf)
+{
+        return snprintf(buf, PAGE_SIZE, "%d\n", 0);
+}
+
+static ssize_t ufshcd_hibern8_on_idle_delay_store_stub(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	return count;
+}
+
 static ssize_t ufshcd_hibern8_on_idle_enable_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -3072,6 +3084,17 @@ static ssize_t ufshcd_hibern8_on_idle_enable_show(struct device *dev,
 			hba->hibern8_on_idle.is_enabled);
 }
 
+static ssize_t ufshcd_hibern8_on_idle_enable_show_stub(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+        return snprintf(buf, PAGE_SIZE, "%d\n", 0);
+}
+
+static ssize_t ufshcd_hibern8_on_idle_enable_store_stub(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	return count;
+}
 
 static void ufshcd_hibern8_on_idle_switch_work(struct work_struct *work)
 {
@@ -3132,7 +3155,7 @@ static ssize_t ufshcd_hibern8_on_idle_enable_store(struct device *dev,
 	return count;
 }
 
-static void ufshcd_init_hibern8_on_idle(struct ufs_hba *hba)
+static void __maybe_unused ufshcd_init_hibern8_on_idle(struct ufs_hba *hba)
 {
 	/* initialize the state variable here */
 	hba->hibern8_on_idle.state = HIBERN8_EXITED;
@@ -3179,10 +3202,42 @@ static void ufshcd_init_hibern8_on_idle(struct ufs_hba *hba)
 		dev_err(hba->dev, "Failed to create sysfs for hibern8_on_idle_enable\n");
 }
 
-static void ufshcd_exit_hibern8_on_idle(struct ufs_hba *hba)
+static void ufshcd_init_hibern8_on_idle_stub(struct ufs_hba *hba)
+{
+	/* initialize the state variable here */
+	hba->hibern8_on_idle.state = HIBERN8_EXITED;
+
+	hba->hibern8_on_idle.delay_attr.show =
+					ufshcd_hibern8_on_idle_delay_show_stub;
+	hba->hibern8_on_idle.delay_attr.store =
+					ufshcd_hibern8_on_idle_delay_store_stub;
+	sysfs_attr_init(&hba->hibern8_on_idle.delay_attr.attr);
+	hba->hibern8_on_idle.delay_attr.attr.name = "hibern8_on_idle_delay_ms";
+	hba->hibern8_on_idle.delay_attr.attr.mode = S_IRUGO | S_IWUSR;
+	if (device_create_file(hba->dev, &hba->hibern8_on_idle.delay_attr))
+		dev_err(hba->dev, "Failed to create sysfs for hibern8_on_idle_delay\n");
+
+	hba->hibern8_on_idle.enable_attr.show =
+					ufshcd_hibern8_on_idle_enable_show_stub;
+	hba->hibern8_on_idle.enable_attr.store =
+					ufshcd_hibern8_on_idle_enable_store_stub;
+	sysfs_attr_init(&hba->hibern8_on_idle.enable_attr.attr);
+	hba->hibern8_on_idle.enable_attr.attr.name = "hibern8_on_idle_enable";
+	hba->hibern8_on_idle.enable_attr.attr.mode = S_IRUGO | S_IWUSR;
+	if (device_create_file(hba->dev, &hba->hibern8_on_idle.enable_attr))
+		dev_err(hba->dev, "Failed to create sysfs for hibern8_on_idle_enable\n");
+}
+
+static void __maybe_unused ufshcd_exit_hibern8_on_idle(struct ufs_hba *hba)
 {
 	if (!ufshcd_is_hibern8_on_idle_allowed(hba))
 		return;
+	device_remove_file(hba->dev, &hba->hibern8_on_idle.delay_attr);
+	device_remove_file(hba->dev, &hba->hibern8_on_idle.enable_attr);
+}
+
+static void ufshcd_exit_hibern8_on_idle_stub(struct ufs_hba *hba)
+{
 	device_remove_file(hba->dev, &hba->hibern8_on_idle.delay_attr);
 	device_remove_file(hba->dev, &hba->hibern8_on_idle.enable_attr);
 }
@@ -11580,7 +11635,7 @@ void ufshcd_remove(struct ufs_hba *hba)
 
 	ufshcd_exit_manual_gc(hba);
 	ufshcd_exit_clk_gating(hba);
-	ufshcd_exit_hibern8_on_idle(hba);
+	ufshcd_exit_hibern8_on_idle_stub(hba);
 	if (ufshcd_is_clkscaling_supported(hba)) {
 		device_remove_file(hba->dev, &hba->clk_scaling.enable_attr);
 		if (hba->devfreq)
@@ -11775,7 +11830,7 @@ int ufshcd_init(struct ufs_hba *hba, void __iomem *mmio_base, unsigned int irq)
 	init_waitqueue_head(&hba->dev_cmd.tag_wq);
 
 	ufshcd_init_clk_gating(hba);
-	ufshcd_init_hibern8_on_idle(hba);
+	ufshcd_init_hibern8_on_idle_stub(hba);
 	ufshcd_init_manual_gc(hba);
 
 	/*
