@@ -6,7 +6,7 @@
 # function. Nothing will happen if you execute it.
 #
 
-BUILD_DIR="/home/ohshitvladneedsanotherone"
+BUILD_DIR="/home/celtare"
 
 # Path to executables in Clang toolchain
 clang_bin="$BUILD_DIR/android/linux-x86/clang-r377782b/bin"
