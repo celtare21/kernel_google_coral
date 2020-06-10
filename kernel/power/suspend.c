@@ -106,7 +106,7 @@ static void suspend_timeout(int timeout_count)
 {
 	char *null_pointer = NULL;
 
-	pr_info("Suspend monitor timeout (timer is %d seconds)\n",
+	pr_debug("Suspend monitor timeout (timer is %d seconds)\n",
 		(SUSPEND_TIMER_TIMEOUT_MS/1000));
 
 	show_state_filter(TASK_UNINTERRUPTIBLE);
@@ -117,7 +117,7 @@ static void suspend_timeout(int timeout_count)
 	if (is_console_suspended())
 		resume_console();
 
-	pr_info("Trigger a panic\n");
+	pr_debug("Trigger a panic\n");
 
 	/* Trigger a NULL pointer dereference */
 	*null_pointer = 'a';
@@ -134,7 +134,7 @@ static int suspend_monitor_kthread(void *arg)
 	static int timeout_count;
 	static long timeout;
 
-	pr_info("Init ksuspend_mon thread\n");
+	pr_debug("Init ksuspend_mon thread\n");
 
 	sched_setscheduler(current, SCHED_FIFO, &param);
 
@@ -154,11 +154,11 @@ static int suspend_monitor_kthread(void *arg)
 			if (suspend_mon_toggle == TOGGLE_START) {
 				timeout = msecs_to_jiffies(
 					SUSPEND_TIMER_TIMEOUT_MS);
-				pr_info("Start suspend monitor\n");
+				pr_debug("Start suspend monitor\n");
 			} else if (suspend_mon_toggle == TOGGLE_STOP) {
 				timeout = MAX_SCHEDULE_TIMEOUT;
 				timeout_count = 0;
-				pr_info("Stop suspend monitor\n");
+				pr_debug("Stop suspend monitor\n");
 			}
 			suspend_mon_toggle = TOGGLE_NONE;
 			mutex_unlock(&suspend_mon_lock);
@@ -171,7 +171,7 @@ static int suspend_monitor_kthread(void *arg)
 			timeout_count++;
 			suspend_timeout(timeout_count);
 		} else if (err == -ERESTARTSYS) {
-			pr_info("Exit ksuspend_mon!");
+			pr_debug("Exit ksuspend_mon!");
 			break;
 		}
 	} while (1);
@@ -574,7 +574,7 @@ static int suspend_enter(suspend_state_t state, bool *wakeup)
 	if (error) {
 		last_dev = suspend_stats.last_failed_dev + REC_FAILED_NUM - 1;
 		last_dev %= REC_FAILED_NUM;
-		pr_err("late suspend of devices failed\n");
+		pr_debug("late suspend of devices failed\n");
 		log_suspend_abort_reason("late suspend of %s device failed",
 					 suspend_stats.failed_devs[last_dev]);
 		goto Platform_finish;
@@ -592,7 +592,7 @@ static int suspend_enter(suspend_state_t state, bool *wakeup)
 	if (error) {
 		last_dev = suspend_stats.last_failed_dev + REC_FAILED_NUM - 1;
 		last_dev %= REC_FAILED_NUM;
-		pr_err("noirq suspend of devices failed\n");
+		pr_debug("noirq suspend of devices failed\n");
 		log_suspend_abort_reason("noirq suspend of %s device failed",
 					 suspend_stats.failed_devs[last_dev]);
 		goto Platform_early_resume;
@@ -680,7 +680,7 @@ int suspend_devices_and_enter(suspend_state_t state)
 	suspend_test_start();
 	error = dpm_suspend_start(PMSG_SUSPEND);
 	if (error) {
-		pr_err("Some devices failed to suspend, or early wake event detected\n");
+		pr_debug("Some devices failed to suspend, or early wake event detected\n");
 		log_suspend_abort_reason(
 				"Some devices failed to suspend, or early wake event detected");
 		goto Recover_platform;
@@ -755,9 +755,9 @@ static int enter_state(suspend_state_t state)
 
 #ifndef CONFIG_SUSPEND_SKIP_SYNC
 	trace_suspend_resume(TPS("sync_filesystems"), 0, true);
-	pr_info("Syncing filesystems ... ");
+	pr_debug("Syncing filesystems ... ");
 	sys_sync();
-	pr_cont("done.\n");
+	pr_debug("done.\n");
 	trace_suspend_resume(TPS("sync_filesystems"), 0, false);
 #endif
 
@@ -792,7 +792,7 @@ static void pm_suspend_marker(char *annotation)
 
 	getnstimeofday(&ts);
 	rtc_time_to_tm(ts.tv_sec, &tm);
-	pr_info("PM: suspend %s %d-%02d-%02d %02d:%02d:%02d.%09lu UTC\n",
+	pr_debug("PM: suspend %s %d-%02d-%02d %02d:%02d:%02d.%09lu UTC\n",
 		annotation, tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
 		tm.tm_hour, tm.tm_min, tm.tm_sec, ts.tv_nsec);
 }
@@ -812,7 +812,7 @@ int pm_suspend(suspend_state_t state)
 		return -EINVAL;
 
 	pm_suspend_marker("entry");
-	pr_info("suspend entry (%s)\n", mem_sleep_labels[state]);
+	pr_debug("suspend entry (%s)\n", mem_sleep_labels[state]);
 
 #ifdef CONFIG_PM_SLEEP_MONITOR
 	start_suspend_mon();
@@ -831,7 +831,7 @@ int pm_suspend(suspend_state_t state)
 #endif
 
 	pm_suspend_marker("exit");
-	pr_info("suspend exit\n");
+	pr_debug("suspend exit\n");
 	measure_wake_up_time();
 	return error;
 }

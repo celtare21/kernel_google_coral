@@ -58,7 +58,7 @@ static void tbn_request_work(struct work_struct *work)
 	if (!tbn || !tbn->connected)
 		return;
 
-	dev_info(tbn->dev, "kernel requesting bus access from SLPI\n");
+	dev_dbg(tbn->dev, "kernel requesting bus access from SLPI\n");
 
 	mutex_lock(&tbn->service_lock);
 	err = send_request_wait(&tbn->qmi_handle,

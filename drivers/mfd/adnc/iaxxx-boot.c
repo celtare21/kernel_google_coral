@@ -94,7 +94,7 @@ static int iaxxx_download_section_chunks(struct iaxxx_priv *priv,
 	int temp_len = section->length / (chunk_size);
 	int chunk_word_size = chunk_size * 4;
 
-	dev_err(dev, "Writing section at 0x%.08X, %d words(s)\n",
+	dev_dbg(dev, "Writing section at 0x%.08X, %d words(s)\n",
 				section->start_address, section->length);
 
 	/* Write the section data directly to the device memory */
