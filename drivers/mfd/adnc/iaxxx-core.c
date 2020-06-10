@@ -944,7 +944,7 @@ static irqreturn_t iaxxx_event_isr(int irq, void *data)
 	if (priv->debug_isr_disable)
 		return IRQ_HANDLED;
 
-	dev_info(priv->dev, "%s: IRQ %d\n", __func__, irq);
+	dev_dbg(priv->dev, "%s: IRQ %d\n", __func__, irq);
 
 	if (!priv->boot_completed) {
 		is_startup = !test_and_set_bit(IAXXX_FLG_STARTUP,
