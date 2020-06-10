@@ -705,7 +705,7 @@ set_param_blk_err:
 		ret = iaxxx_package_load(odsp_dev_priv->parent,
 			pkg_info.pkg_name, pkg_info.pkg_id,
 			&pkg_info.proc_id);
-		pr_info("%s()Pkg name %s id %d\n", __func__,
+		pr_debug("%s()Pkg name %s id %d\n", __func__,
 				pkg_info.pkg_name, pkg_info.pkg_id);
 		if (ret) {
 			pr_err("%s() Load package failed\n", __func__);
