@@ -1097,9 +1097,6 @@ static struct bio *f2fs_grab_read_bio(struct inode *inode, block_t blkaddr,
 
 static void f2fs_release_read_bio(struct bio *bio)
 {
-	if (bio->bi_alloc_ts)
-		mm_event_record(F2FS_READ_DATA, bio->bi_alloc_ts);
-
 	if (bio->bi_private)
 		mempool_free(bio->bi_private, bio_post_read_ctx_pool);
 	bio_put(bio);
@@ -2170,7 +2167,6 @@ submit_and_realloc:
 			bio = NULL;
 			goto out;
 		}
-		bio->bi_alloc_ts = jiffies;
 		if (bio_encrypted)
 			fscrypt_set_ice_dun(inode, bio, dun);
 	}
@@ -2355,8 +2351,6 @@ submit_and_realloc:
 				*bio_ret = NULL;
 				return ret;
 			}
-			if (!for_write)
-				bio->bi_alloc_ts = jiffies;
 			if (bio_encrypted)
 				fscrypt_set_ice_dun(inode, bio, dun);
 		}
