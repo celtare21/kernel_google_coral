@@ -2118,7 +2118,6 @@ submit_and_realloc:
 			bio = NULL;
 			goto out;
 		}
-		bio->bi_alloc_ts = jiffies;
 		if (bio_encrypted)
 			fscrypt_set_ice_dun(inode, bio, dun);
 	}
@@ -2261,8 +2260,6 @@ submit_and_realloc:
 				*bio_ret = NULL;
 				return ret;
 			}
-			if (!for_write)
-				bio->bi_alloc_ts = jiffies;
 			if (bio_encrypted)
 				fscrypt_set_ice_dun(inode, bio, dun);
 		}
