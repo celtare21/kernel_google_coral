@@ -39,6 +39,10 @@
 #include "clk-voter.h"
 #include "clk-debug.h"
 
+#define PWRCL_SKIP 5
+#define PERFCL_SKIP 2
+#define PERFPCL_SKIP 0
+
 #define OSM_INIT_RATE			300000000UL
 #define XO_RATE				19200000UL
 #define OSM_TABLE_SIZE			40
@@ -319,7 +323,7 @@ static DEFINE_CLK_VOTER(l3_gpu_vote_clk, l3_clk, 0);
 
 static struct clk_osm pwrcl_clk = {
 	.cluster_num = 1,
-	.osm_table_size = OSM_TABLE_SIZE,
+	.osm_table_size = OSM_TABLE_SIZE - PWRCL_SKIP,
 	.hw.init = &osm_clks_init[1],
 };
 
@@ -397,7 +401,7 @@ static struct clk_osm cpu5_pwrcl_clk = {
 
 static struct clk_osm perfcl_clk = {
 	.cluster_num = 2,
-	.osm_table_size = OSM_TABLE_SIZE,
+	.osm_table_size = OSM_TABLE_SIZE - PERFCL_SKIP,
 	.hw.init = &osm_clks_init[2],
 };
 
@@ -451,7 +455,7 @@ static struct clk_osm cpu7_perfcl_clk = {
 
 static struct clk_osm perfpcl_clk = {
 	.cluster_num = 3,
-	.osm_table_size = OSM_TABLE_SIZE,
+	.osm_table_size = OSM_TABLE_SIZE - PERFPCL_SKIP,
 	.hw.init = &osm_clks_init[3],
 };
 
@@ -500,6 +504,31 @@ struct clk_osm *clk_cpu_map[] = {
 	&cpu6_perfcl_clk,
 	&cpu7_perfpcl_clk,
 };
+
+static bool should_skip(unsigned int freq, int cpu)
+{
+	unsigned int skip_freqs_little[] = { 844800, 940800, 1036800, 1209600, 1382400 };
+	unsigned int skip_freqs_mid[] = { 2131200, 2227200 };
+	unsigned int skip_freqs_big[] = { };
+	int i;
+
+	if (cpu > -1 && cpu < 4)
+		for (i = 0; i < ARRAY_SIZE(skip_freqs_little); i++)
+			if (freq == skip_freqs_little[i])
+				return true;
+
+        if (cpu > 3 && cpu < 7)
+                for (i = 0; i < ARRAY_SIZE(skip_freqs_mid); i++)
+                        if (freq == skip_freqs_mid[i])
+                                return true;
+
+        if (cpu == 7)
+                for (i = 0; i < ARRAY_SIZE(skip_freqs_big); i++)
+                        if (freq == skip_freqs_big[i])
+                                return true;
+
+	return false;
+}
 
 static struct clk_osm *logical_cpu_to_clk(int cpu)
 {
@@ -663,6 +692,7 @@ static int osm_cpufreq_cpu_init(struct cpufreq_policy *policy)
 
 	for (i = 0; i < parent->osm_table_size; i++) {
 		u32 data, src, div, lval, core_count;
+		unsigned int freq;
 
 		data = clk_osm_read_reg(c, FREQ_REG + i * OSM_REG_SIZE);
 		src = (data & GENMASK(31, 30)) >> 30;
@@ -670,11 +700,13 @@ static int osm_cpufreq_cpu_init(struct cpufreq_policy *policy)
 		lval = data & GENMASK(7, 0);
 		core_count = CORE_COUNT_VAL(data);
 
+		freq = (!src) ? OSM_INIT_RATE / 1000 : (XO_RATE * lval) / 1000;
+
+		if (should_skip(freq, policy->cpu))
+			continue;
+
 		/* Save the frequencies in terms of KHz */
-		if (!src)
-			table[i].frequency = OSM_INIT_RATE / 1000;
-		else
-			table[i].frequency = (XO_RATE * lval) / 1000;
+		table[i].frequency = freq;
 		table[i].driver_data = table[i].frequency;
 
 		if (core_count == SINGLE_CORE_COUNT)
@@ -933,19 +965,23 @@ static u64 clk_osm_get_cpu_cycle_counter(int cpu)
 	return cycle_counter_ret;
 }
 
-static int clk_osm_read_lut(struct platform_device *pdev, struct clk_osm *c)
+static int clk_osm_read_lut(struct platform_device *pdev, struct clk_osm *c, int cpu)
 {
 	u32 data, src, lval, i, j = c->osm_table_size;
 
 	for (i = 0; i < c->osm_table_size; i++) {
+		unsigned long int freq;
+
 		data = clk_osm_read_reg(c, FREQ_REG + i * OSM_REG_SIZE);
 		src = ((data & GENMASK(31, 30)) >> 30);
 		lval = (data & GENMASK(7, 0));
 
-		if (!src)
-			c->osm_table[i].frequency = OSM_INIT_RATE;
-		else
-			c->osm_table[i].frequency = XO_RATE * lval;
+		freq = (!src) ? OSM_INIT_RATE : XO_RATE * lval;
+
+		if (should_skip(freq / 1000, cpu))
+			continue;
+
+		c->osm_table[i].frequency = freq;
 
 		data = clk_osm_read_reg(c, VOLT_REG + i * OSM_REG_SIZE);
 		c->osm_table[i].virtual_corner =
@@ -1168,7 +1204,7 @@ static int clk_cpu_osm_driver_probe(struct platform_device *pdev)
 		perfcl_clk.per_core_dcvs = true;
 
 	if (!is_trinket) {
-		rc = clk_osm_read_lut(pdev, &l3_clk);
+		rc = clk_osm_read_lut(pdev, &l3_clk, -1);
 		if (rc) {
 			dev_err(&pdev->dev, "Unable to read OSM LUT for L3, rc=%d\n",
 				rc);
@@ -1176,14 +1212,14 @@ static int clk_cpu_osm_driver_probe(struct platform_device *pdev)
 		}
 	}
 
-	rc = clk_osm_read_lut(pdev, &pwrcl_clk);
+	rc = clk_osm_read_lut(pdev, &pwrcl_clk, 0);
 	if (rc) {
 		dev_err(&pdev->dev, "Unable to read OSM LUT for power cluster, rc=%d\n",
 			rc);
 		return rc;
 	}
 
-	rc = clk_osm_read_lut(pdev, &perfcl_clk);
+	rc = clk_osm_read_lut(pdev, &perfcl_clk, 4);
 	if (rc) {
 		dev_err(&pdev->dev, "Unable to read OSM LUT for perf cluster, rc=%d\n",
 			rc);
@@ -1192,7 +1228,7 @@ static int clk_cpu_osm_driver_probe(struct platform_device *pdev)
 
 	if (!is_sdmshrike && !is_sm6150 && !is_sdmmagpie &&
 		!is_trinket && !is_atoll) {
-		rc = clk_osm_read_lut(pdev, &perfpcl_clk);
+		rc = clk_osm_read_lut(pdev, &perfpcl_clk, 7);
 		if (rc) {
 			dev_err(&pdev->dev, "Unable to read OSM LUT for perf plus cluster, rc=%d\n",
 				rc);
