@@ -60,9 +60,9 @@
 
 		qcom,mdss-dsi-display-timings {
 			timing@0 {
-				qcom,mdss-dsi-panel-framerate = <60>;
+				qcom,mdss-dsi-panel-framerate = <90>;
 				qcom,mdss-dsi-panel-clockrate = <962150400>;
-				qcom,mdss-mdp-transfer-time-us = <14000>;
+				qcom,mdss-mdp-transfer-time-us = <9000>;
 				qcom,mdss-dsi-panel-width = <1440>;
 				qcom,mdss-dsi-panel-height = <3040>;
 				qcom,mdss-dsi-h-pulse-width = <16>;
@@ -75,7 +75,7 @@
 				qcom,mdss-dsi-on-command = [
 					07 01 00 00 00 00 01 01    /* Compression Enable */
 					05 01 00 00 05 00 01 11    /* sleep out, Wait 5 ms */
-					15 01 00 00 00 00 02 53 20 /* write ctl 60hz */
+					15 01 00 00 00 00 02 53 30 /* write ctl 90hz */
 					15 01 00 00 00 00 02 35 00 /* TE on */
 
 					39 01 00 00 00 00 03 F0 5A 5A
@@ -109,7 +109,7 @@
 				qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
 
 				qcom,mdss-dsi-timing-switch-command = [
-					15 01 00 00 00 00 02 53 20 /* write ctl 60hz */];
+					15 01 00 00 00 00 02 53 30 /* write ctl 90hz */];
 				qcom,mdss-dsi-timing-switch-command-state = "dsi_lp_mode";
 
 				qcom,mdss-dsi-lp1-command = [
@@ -131,7 +131,7 @@
 					39 01 00 00 00 00 03 F0 5A 5A
 					39 01 00 00 00 00 03 B0 A8 B1
 					15 01 00 00 00 00 02 B1 01
-					15 01 00 00 00 00 02 53 20 /* write ctl 60 hz */
+					15 01 00 00 00 00 02 53 30 /* write ctl 90 hz */
 					39 01 00 00 00 00 03 B0 3F B5
 					15 01 00 00 22 00 02 B5 85 /* swire refresh on */
 				];
