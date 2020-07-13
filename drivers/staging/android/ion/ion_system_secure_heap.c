@@ -397,9 +397,10 @@ struct page *alloc_from_secure_pool_order(struct ion_system_heap *heap,
 struct page *split_page_from_secure_pool(struct ion_system_heap *heap,
 					 struct ion_buffer *buffer)
 {
-	int i, j;
 	struct page *page;
+	int j;
 	unsigned int order;
+	unsigned long i;
 
 	mutex_lock(&heap->split_page_mutex);
 
