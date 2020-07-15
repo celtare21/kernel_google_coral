@@ -44,7 +44,7 @@ struct etnaviv_iommu {
 	struct list_head mappings;
 	struct drm_mm mm;
 	u32 last_iova;
-	unsigned int flush_seq;
+	bool need_flush;
 };
 
 struct etnaviv_gem_object;

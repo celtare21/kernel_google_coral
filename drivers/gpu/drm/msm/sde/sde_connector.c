@@ -1,4 +1,4 @@
-/* Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2016-2019, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -32,6 +32,9 @@
 
 #define SDE_ERROR_CONN(c, fmt, ...) SDE_ERROR("conn%d " fmt,\
 		(c) ? (c)->base.base.id : -1, ##__VA_ARGS__)
+static u32 dither_matrix[DITHER_MATRIX_SZ] = {
+	15, 7, 13, 5, 3, 11, 1, 9, 12, 4, 14, 6, 0, 8, 2, 10
+};
 
 static const struct drm_prop_enum_list e_topology_name[] = {
 	{SDE_RM_TOPOLOGY_NONE,	"sde_none"},
@@ -59,7 +62,6 @@ static const struct drm_prop_enum_list e_power_mode[] = {
 static const struct drm_prop_enum_list e_qsync_mode[] = {
 	{SDE_RM_QSYNC_DISABLED,	"none"},
 	{SDE_RM_QSYNC_CONTINUOUS_MODE,	"continuous"},
-	{SDE_RM_QSYNC_ONE_SHOT_MODE,	"one_shot"},
 };
 
 int sde_connector_trigger_event(void *drm_connector,
@@ -139,12 +141,60 @@ void sde_connector_unregister_event(struct drm_connector *connector,
 	(void)sde_connector_register_event(connector, event_idx, 0, 0);
 }
 
+static int _sde_connector_get_default_dither_cfg_v1(
+		struct sde_connector *c_conn, void *cfg)
+{
+	struct drm_msm_dither *dither_cfg = (struct drm_msm_dither *)cfg;
+	enum dsi_pixel_format dst_format = DSI_PIXEL_FORMAT_MAX;
+
+	if (!c_conn || !cfg) {
+		SDE_ERROR("invalid argument(s), c_conn %pK, cfg %pK\n",
+				c_conn, cfg);
+		return -EINVAL;
+	}
+
+	if (!c_conn->ops.get_dst_format) {
+		SDE_DEBUG("get_dst_format is unavailable\n");
+		return 0;
+	}
+
+	dst_format = c_conn->ops.get_dst_format(&c_conn->base, c_conn->display);
+	switch (dst_format) {
+	case DSI_PIXEL_FORMAT_RGB888:
+		dither_cfg->c0_bitdepth = 8;
+		dither_cfg->c1_bitdepth = 8;
+		dither_cfg->c2_bitdepth = 8;
+		dither_cfg->c3_bitdepth = 8;
+		break;
+	case DSI_PIXEL_FORMAT_RGB666:
+	case DSI_PIXEL_FORMAT_RGB666_LOOSE:
+		dither_cfg->c0_bitdepth = 6;
+		dither_cfg->c1_bitdepth = 6;
+		dither_cfg->c2_bitdepth = 6;
+		dither_cfg->c3_bitdepth = 6;
+		break;
+	default:
+		SDE_DEBUG("no default dither config for dst_format %d\n",
+			dst_format);
+		return -ENODATA;
+	}
+
+	memcpy(&dither_cfg->matrix, dither_matrix,
+			sizeof(u32) * DITHER_MATRIX_SZ);
+	dither_cfg->temporal_en = 0;
+	return 0;
+}
+
 static void _sde_connector_install_dither_property(struct drm_device *dev,
 		struct sde_kms *sde_kms, struct sde_connector *c_conn)
 {
 	char prop_name[DRM_PROP_NAME_LEN];
 	struct sde_mdss_cfg *catalog = NULL;
-	u32 version = 0;
+	struct drm_property_blob *blob_ptr;
+	void *cfg;
+	int ret = 0;
+	u32 version = 0, len = 0;
+	bool defalut_dither_needed = false;
 
 	if (!dev || !sde_kms || !c_conn) {
 		SDE_ERROR("invld args (s), dev %pK, sde_kms %pK, c_conn %pK\n",
@@ -162,51 +212,54 @@ static void _sde_connector_install_dither_property(struct drm_device *dev,
 		msm_property_install_blob(&c_conn->property_info, prop_name,
 			DRM_MODE_PROP_BLOB,
 			CONNECTOR_PROP_PP_DITHER);
+		len = sizeof(struct drm_msm_dither);
+		cfg = kzalloc(len, GFP_KERNEL);
+		if (!cfg)
+			return;
+
+		ret = _sde_connector_get_default_dither_cfg_v1(c_conn, cfg);
+		if (!ret)
+			defalut_dither_needed = true;
 		break;
 	default:
 		SDE_ERROR("unsupported dither version %d\n", version);
 		return;
 	}
+
+	if (defalut_dither_needed) {
+		blob_ptr = drm_property_create_blob(dev, len, cfg);
+		if (IS_ERR_OR_NULL(blob_ptr))
+			goto exit;
+		c_conn->blob_dither = blob_ptr;
+	}
+exit:
+	kfree(cfg);
 }
 
 int sde_connector_get_dither_cfg(struct drm_connector *conn,
 			struct drm_connector_state *state, void **cfg,
-			size_t *len, bool idle_pc)
+			size_t *len)
 {
 	struct sde_connector *c_conn = NULL;
 	struct sde_connector_state *c_state = NULL;
 	size_t dither_sz = 0;
-	bool is_dirty;
 	u32 *p = (u32 *)cfg;
 
-	if (!conn || !state || !p) {
-		SDE_ERROR("invalid arguments\n");
+	if (!conn || !state || !p)
 		return -EINVAL;
-	}
 
 	c_conn = to_sde_connector(conn);
 	c_state = to_sde_connector_state(state);
 
-	is_dirty = msm_property_is_dirty(&c_conn->property_info,
-			&c_state->property_state,
-			CONNECTOR_PROP_PP_DITHER);
-
-	if (!is_dirty && !idle_pc) {
-		return -ENODATA;
-	} else if (is_dirty || idle_pc) {
-		*cfg = msm_property_get_blob(&c_conn->property_info,
-				&c_state->property_state,
-				&dither_sz,
-				CONNECTOR_PROP_PP_DITHER);
-		/*
-		 * In idle_pc use case return early, when dither is
-		 * already disabled.
-		 */
-		if (idle_pc && *cfg == NULL)
-			return -ENODATA;
-		/* disable dither based on user config data */
-		else if (*cfg == NULL)
-			return 0;
+	/* try to get user config data first */
+	*cfg = msm_property_get_blob(&c_conn->property_info,
+					&c_state->property_state,
+					&dither_sz,
+					CONNECTOR_PROP_PP_DITHER);
+	/* if user config data doesn't exist, use default dither blob */
+	if (*cfg == NULL && c_conn->blob_dither) {
+		*cfg = &c_conn->blob_dither->data;
+		dither_sz = c_conn->blob_dither->length;
 	}
 	*len = dither_sz;
 	return 0;
@@ -402,30 +455,21 @@ static int _sde_connector_update_bl_scale(struct sde_connector *c_conn)
 
 void sde_connector_set_qsync_params(struct drm_connector *connector)
 {
-	struct sde_connector *c_conn;
-	struct sde_connector_state *c_state;
-	u32 qsync_propval = 0;
-	bool prop_dirty;
+	struct sde_connector *c_conn = to_sde_connector(connector);
+	u32 qsync_propval;
 
 	if (!connector)
 		return;
 
-	c_conn = to_sde_connector(connector);
-	c_state = to_sde_connector_state(connector->state);
 	c_conn->qsync_updated = false;
+	qsync_propval = sde_connector_get_property(c_conn->base.state,
+			CONNECTOR_PROP_QSYNC_MODE);
 
-	prop_dirty = msm_property_is_dirty(&c_conn->property_info,
-					&c_state->property_state,
-					CONNECTOR_PROP_QSYNC_MODE);
-	if (prop_dirty) {
-		qsync_propval = sde_connector_get_property(c_conn->base.state,
-						CONNECTOR_PROP_QSYNC_MODE);
-		if (qsync_propval != c_conn->qsync_mode) {
-			SDE_DEBUG("updated qsync mode %d -> %d\n",
-				  c_conn->qsync_mode, qsync_propval);
-			c_conn->qsync_updated = true;
-			c_conn->qsync_mode = qsync_propval;
-		}
+	if (qsync_propval != c_conn->qsync_mode) {
+		SDE_DEBUG("updated qsync mode %d -> %d\n", c_conn->qsync_mode,
+				qsync_propval);
+		c_conn->qsync_updated = true;
+		c_conn->qsync_mode = qsync_propval;
 	}
 }
 
@@ -516,6 +560,13 @@ int sde_connector_pre_kickoff(struct drm_connector *connector)
 
 	params.rois = &c_state->rois;
 	params.hdr_meta = &c_state->hdr_meta;
+	params.qsync_update = false;
+
+	if (c_conn->qsync_updated) {
+		params.qsync_mode = c_conn->qsync_mode;
+		params.qsync_update = true;
+		SDE_EVT32(connector->base.id, params.qsync_mode);
+	}
 
 	SDE_EVT32_VERBOSE(connector->base.id);
 
@@ -524,44 +575,6 @@ int sde_connector_pre_kickoff(struct drm_connector *connector)
 end:
 	return rc;
 }
-
-int sde_connector_prepare_commit(struct drm_connector *connector)
-{
-	struct sde_connector *c_conn;
-	struct sde_connector_state *c_state;
-	struct msm_display_conn_params params;
-	int rc;
-
-	if (!connector) {
-		SDE_ERROR("invalid argument\n");
-		return -EINVAL;
-	}
-
-	c_conn = to_sde_connector(connector);
-	c_state = to_sde_connector_state(connector->state);
-	if (!c_conn->display) {
-		SDE_ERROR("invalid connector display\n");
-		return -EINVAL;
-	}
-
-	if (!c_conn->ops.prepare_commit)
-		return 0;
-
-	memset(&params, 0, sizeof(params));
-
-	if (c_conn->qsync_updated) {
-		params.qsync_mode = c_conn->qsync_mode;
-		params.qsync_update = true;
-	}
-
-	rc = c_conn->ops.prepare_commit(c_conn->display, &params);
-
-	SDE_EVT32(connector->base.id, params.qsync_mode,
-		  params.qsync_update, rc);
-
-	return rc;
-}
-
 
 void sde_connector_helper_bridge_disable(struct drm_connector *connector)
 {
@@ -1062,7 +1075,7 @@ static int sde_connector_atomic_set_property(struct drm_connector *connector,
 
 		/* convert fb val to drm framebuffer and prepare it */
 		c_state->out_fb =
-			drm_framebuffer_lookup(connector->dev, NULL, val);
+			drm_framebuffer_lookup(connector->dev, val);
 		if (!c_state->out_fb && val) {
 			SDE_ERROR("failed to look up fb %lld\n", val);
 			rc = -EFAULT;
@@ -1115,10 +1128,6 @@ static int sde_connector_atomic_set_property(struct drm_connector *connector,
 	case CONNECTOR_PROP_AD_BL_SCALE:
 		c_conn->bl_scale_ad = val;
 		c_conn->bl_scale_dirty = true;
-		break;
-	case CONNECTOR_PROP_QSYNC_MODE:
-		msm_property_set_dirty(&c_conn->property_info,
-				&c_state->property_state, idx);
 		break;
 	default:
 		break;
@@ -1445,7 +1454,6 @@ static ssize_t _sde_debugfs_conn_cmd_tx_sts_read(struct file *file,
 		return 0;
 	}
 
-	blen = min_t(size_t, MAX_CMD_PAYLOAD_SIZE, count);
 	if (copy_to_user(buf, buffer, blen)) {
 		SDE_ERROR("copy to user buffer failed\n");
 		return -EFAULT;
@@ -1728,36 +1736,13 @@ static int sde_connector_atomic_check(struct drm_connector *connector,
 		struct drm_connector_state *new_conn_state)
 {
 	struct sde_connector *c_conn;
-	struct drm_crtc_state *crtc_state;
-	struct sde_connector_state *c_state;
-	bool qsync_dirty;
 
 	if (!connector) {
 		SDE_ERROR("invalid connector\n");
-		return -EINVAL;
-	}
-
-	if (!new_conn_state) {
-		SDE_ERROR("invalid connector state\n");
-		return -EINVAL;
+		return 0;
 	}
 
 	c_conn = to_sde_connector(connector);
-	c_state = to_sde_connector_state(new_conn_state);
-
-	if (new_conn_state->crtc) {
-		crtc_state = drm_atomic_get_new_crtc_state(
-			new_conn_state->state, new_conn_state->crtc);
-
-		qsync_dirty = msm_property_is_dirty(&c_conn->property_info,
-					&c_state->property_state,
-					CONNECTOR_PROP_QSYNC_MODE);
-
-		if (drm_atomic_crtc_needs_modeset(crtc_state) && qsync_dirty) {
-			SDE_ERROR("invalid qsync update during modeset\n");
-			return -EINVAL;
-		}
-	}
 
 	if (c_conn->ops.atomic_check)
 		return c_conn->ops.atomic_check(connector,

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -71,35 +71,6 @@ static u8 const vm_voltage_swing[4][4] = {
 	{0x11, 0x1E, 0x1F, 0xFF}, /* sw1, 0.6 v */
 	{0x19, 0x1F, 0xFF, 0xFF}, /* sw1, 0.8 v */
 	{0xFF, 0xFF, 0xFF, 0xFF}  /* sw1, 1.2 v, optional */
-};
-
-
-static u8 const vm_pre_emphasis_hbr3_hbr2[4][4] = {
-	{0x00, 0x0C, 0x15, 0x1A},
-	{0x02, 0x0E, 0x16, 0xFF},
-	{0x02, 0x11, 0xFF, 0xFF},
-	{0x04, 0xFF, 0xFF, 0xFF}
-};
-
-static u8 const vm_voltage_swing_hbr3_hbr2[4][4] = {
-	{0x02, 0x12, 0x16, 0x1A},
-	{0x09, 0x19, 0x1F, 0xFF},
-	{0x10, 0x1F, 0xFF, 0xFF},
-	{0x1F, 0xFF, 0xFF, 0xFF}
-};
-
-static u8 const vm_pre_emphasis_hbr_rbr[4][4] = {
-	{0x00, 0x0C, 0x14, 0x19},
-	{0x00, 0x0B, 0x12, 0xFF},
-	{0x00, 0x0B, 0xFF, 0xFF},
-	{0x04, 0xFF, 0xFF, 0xFF}
-};
-
-static u8 const vm_voltage_swing_hbr_rbr[4][4] = {
-	{0x08, 0x0F, 0x16, 0x1F},
-	{0x11, 0x1E, 0x1F, 0xFF},
-	{0x19, 0x1F, 0xFF, 0xFF},
-	{0x1F, 0xFF, 0xFF, 0xFF}
 };
 
 struct dp_catalog_io {
@@ -790,7 +761,6 @@ static void dp_catalog_ctrl_config_ctrl(struct dp_catalog_ctrl *ctrl, u8 ln_cnt)
 	cfg = dp_read(catalog->exe_mode, io_data, DP_CONFIGURATION_CTRL);
 	cfg &= ~(BIT(4) | BIT(5));
 	cfg |= (ln_cnt - 1) << 4;
-	cfg &= ~BIT(10);
 	dp_write(catalog->exe_mode, io_data, DP_CONFIGURATION_CTRL, cfg);
 
 	cfg = dp_read(catalog->exe_mode, io_data, DP_MAINLINK_CTRL);
@@ -888,8 +858,6 @@ static void dp_catalog_ctrl_lane_mapping(struct dp_catalog_ctrl *ctrl,
 {
 	struct dp_catalog_private *catalog;
 	struct dp_io_data *io_data;
-	u8 l_map[4], i;
-	u32 lane_map_reg = 0;
 
 	if (!ctrl) {
 		pr_err("invalid input\n");
@@ -899,14 +867,8 @@ static void dp_catalog_ctrl_lane_mapping(struct dp_catalog_ctrl *ctrl,
 	catalog = dp_catalog_get_priv(ctrl);
 	io_data = catalog->io.dp_link;
 
-	for (i = 0; i < DP_MAX_PHY_LN; i++)
-		l_map[i] = lane_map[i];
-
-	lane_map_reg = ((l_map[3]&3)<<6)|((l_map[2]&3)<<4)|((l_map[1]&3)<<2)
-			|(l_map[0]&3);
-
 	dp_write(catalog->exe_mode, io_data, DP_LOGICAL2PHYSICAL_LANE_MAPPING,
-			lane_map_reg);
+			0xe4);
 }
 
 static void dp_catalog_ctrl_lane_pnswap(struct dp_catalog_ctrl *ctrl,
@@ -1469,12 +1431,11 @@ static void dp_catalog_ctrl_phy_lane_cfg(struct dp_catalog_ctrl *ctrl,
 }
 
 static void dp_catalog_ctrl_update_vx_px(struct dp_catalog_ctrl *ctrl,
-		u8 v_level, u8 p_level, bool high)
+		u8 v_level, u8 p_level)
 {
 	struct dp_catalog_private *catalog;
 	struct dp_io_data *io_data;
 	u8 value0, value1;
-	u32 version;
 
 	if (!ctrl) {
 		pr_err("invalid input\n");
@@ -1485,21 +1446,9 @@ static void dp_catalog_ctrl_update_vx_px(struct dp_catalog_ctrl *ctrl,
 
 	pr_debug("hw: v=%d p=%d\n", v_level, p_level);
 
-	io_data = catalog->io.dp_ahb;
-	version = dp_read(catalog->exe_mode, io_data, DP_HW_VERSION);
+	value0 = vm_voltage_swing[v_level][p_level];
+	value1 = vm_pre_emphasis[v_level][p_level];
 
-	if (version == 0x10020004) {
-		if (high) {
-			value0 = vm_voltage_swing_hbr3_hbr2[v_level][p_level];
-			value1 = vm_pre_emphasis_hbr3_hbr2[v_level][p_level];
-		} else {
-			value0 = vm_voltage_swing_hbr_rbr[v_level][p_level];
-			value1 = vm_pre_emphasis_hbr_rbr[v_level][p_level];
-		}
-	} else {
-		value0 = vm_voltage_swing[v_level][p_level];
-		value1 = vm_pre_emphasis[v_level][p_level];
-	}
 	/* program default setting first */
 
 	io_data = catalog->io.dp_ln_tx0;
@@ -1600,7 +1549,7 @@ static void dp_catalog_ctrl_send_phy_pattern(struct dp_catalog_ctrl *ctrl,
 		dp_write(catalog->exe_mode, io_data, DP_MAINLINK_CTRL, value);
 		break;
 	case DP_TEST_PHY_PATTERN_CP2520_PATTERN_3:
-		dp_write(catalog->exe_mode, io_data, DP_MAINLINK_CTRL, 0x01);
+		dp_write(catalog->exe_mode, io_data, DP_MAINLINK_CTRL, 0x11);
 		dp_write(catalog->exe_mode, io_data, DP_STATE_CTRL, 0x8);
 		break;
 	default:

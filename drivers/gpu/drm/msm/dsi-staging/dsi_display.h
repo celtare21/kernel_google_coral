@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2020, The Linux Foundation.All rights reserved.
+ * Copyright (c) 2015-2019, The Linux Foundation.All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -29,6 +29,7 @@
 #include "dsi_phy.h"
 #include "dsi_panel.h"
 
+#define MAX_DSI_CTRLS_PER_DISPLAY             2
 #define DSI_CLIENT_NAME_SIZE		20
 #define MAX_CMDLINE_PARAM_LEN	 512
 #define MAX_CMD_PAYLOAD_SIZE	256
@@ -114,17 +115,12 @@ struct dsi_display_boot_param {
  * struct dsi_display_clk_info - dsi display clock source information
  * @src_clks:          Source clocks for DSI display.
  * @mux_clks:          Mux clocks used for DFPS.
- * @shadow_clks:       Used for D-phy clock switch
- * @shadow_cphy_clks:  Used for C-phy clock switch
- * @xo_clks:           XO clocks for DSI display
+ * @shadow_clks:       Used for DFPS.
  */
 struct dsi_display_clk_info {
 	struct dsi_clk_link_set src_clks;
 	struct dsi_clk_link_set mux_clks;
-	struct dsi_clk_link_set cphy_clks;
 	struct dsi_clk_link_set shadow_clks;
-	struct dsi_clk_link_set shadow_cphy_clks;
-	struct dsi_clk_link_set xo_clks;
 };
 
 /**
@@ -151,7 +147,6 @@ struct dsi_display_ext_bridge {
  * @ext_conn:         Pointer to external connector attached to DSI connector
  * @name:             Name of the display.
  * @display_type:     Display type as defined in device tree.
- * @dsi_type:         Display label as defined in device tree.
  * @list:             List pointer.
  * @is_active:        Is display active.
  * @is_cont_splash_enabled:  Is continuous splash enabled
@@ -165,6 +160,7 @@ struct dsi_display_ext_bridge {
  * @panel:            Handle to DSI panel.
  * @panel_of:         pHandle to DSI panel.
  * @ext_bridge:       External bridge information for DSI display.
+ * @ext_bridge_cnt:   Number of external bridges
  * @modes:            Array of probed DSI modes
  * @type:             DSI display type.
  * @clk_master_idx:   The master controller for controlling clocks. This is an
@@ -202,7 +198,6 @@ struct dsi_display {
 
 	const char *name;
 	const char *display_type;
-	const char *dsi_type;
 	struct list_head list;
 	bool is_cont_splash_enabled;
 	bool sw_te_using_wd;
@@ -222,7 +217,8 @@ struct dsi_display {
 	struct device *panel_info_dev;
 
 	/* external bridge */
-	struct dsi_display_ext_bridge ext_bridge[MAX_EXT_BRIDGE_PORT_CONFIG];
+	struct dsi_display_ext_bridge ext_bridge[MAX_DSI_CTRLS_PER_DISPLAY];
+	u32 ext_bridge_cnt;
 
 	struct dsi_display_mode *modes;
 
@@ -716,15 +712,6 @@ int dsi_display_set_power(struct drm_connector *connector,
 int dsi_display_pre_kickoff(struct drm_connector *connector,
 		struct dsi_display *display,
 		struct msm_display_kickoff_params *params);
-/*
- * dsi_display_pre_commit - program pre commit features
- * @display: Pointer to private display structure
- * @params: Parameters for pre commit time programming
- * Returns: Zero on success
- */
-int dsi_display_pre_commit(void *display,
-		struct msm_display_conn_params *params);
-
 /**
  * dsi_display_get_dst_format() - get dst_format from DSI display
  * @connector:        Pointer to drm connector structure

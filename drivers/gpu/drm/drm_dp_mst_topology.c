@@ -56,6 +56,8 @@ static void drm_dp_send_link_address(struct drm_dp_mst_topology_mgr *mgr,
 static int drm_dp_send_enum_path_resources(struct drm_dp_mst_topology_mgr *mgr,
 					   struct drm_dp_mst_branch *mstb,
 					   struct drm_dp_mst_port *port);
+static int drm_dp_send_clear_payload_table(struct drm_dp_mst_topology_mgr *mgr,
+				  struct drm_dp_mst_branch *mstb);
 static bool drm_dp_validate_guid(struct drm_dp_mst_topology_mgr *mgr,
 				 u8 *guid);
 
@@ -588,6 +590,8 @@ static bool drm_dp_sideband_parse_reply(struct drm_dp_sideband_msg_rx *raw,
 	case DP_POWER_DOWN_PHY:
 	case DP_POWER_UP_PHY:
 		return drm_dp_sideband_parse_power_updown_phy_ack(raw, msg);
+	case DP_CLEAR_PAYLOAD_ID_TABLE:
+		return true;
 	default:
 		DRM_ERROR("Got unknown reply 0x%02x\n", msg->req_type);
 		return false;
@@ -727,6 +731,15 @@ static int build_power_updown_phy(struct drm_dp_sideband_msg_tx *msg,
 	req.u.port_num.port_number = port_num;
 	drm_dp_encode_sideband_req(&req, msg);
 	msg->path_msg = true;
+	return 0;
+}
+
+static int build_clear_payload_id_table(struct drm_dp_sideband_msg_tx *msg)
+{
+	struct drm_dp_sideband_msg_req_body req;
+
+	req.req_type = DP_CLEAR_PAYLOAD_ID_TABLE;
+	drm_dp_encode_sideband_req(&req, msg);
 	return 0;
 }
 
@@ -1019,9 +1032,20 @@ static struct drm_dp_mst_port *drm_dp_mst_get_port_ref_locked(struct drm_dp_mst_
 static struct drm_dp_mst_port *drm_dp_get_validated_port_ref(struct drm_dp_mst_topology_mgr *mgr, struct drm_dp_mst_port *port)
 {
 	struct drm_dp_mst_port *rport = NULL;
+
 	mutex_lock(&mgr->lock);
-	if (mgr->mst_primary)
-		rport = drm_dp_mst_get_port_ref_locked(mgr->mst_primary, port);
+	/*
+	 * Port may or may not be 'valid' but we don't care about that when
+	 * destroying the port and we are guaranteed that the port pointer
+	 * will be valid until we've finished
+	 */
+	if (current_work() == &mgr->destroy_connector_work) {
+		kref_get(&port->kref);
+		rport = port;
+	} else if (mgr->mst_primary) {
+		rport = drm_dp_mst_get_port_ref_locked(mgr->mst_primary,
+						       port);
+	}
 	mutex_unlock(&mgr->lock);
 	return rport;
 }
@@ -1815,6 +1839,32 @@ int drm_dp_send_power_updown_phy(struct drm_dp_mst_topology_mgr *mgr,
 }
 EXPORT_SYMBOL(drm_dp_send_power_updown_phy);
 
+static int drm_dp_send_clear_payload_table(struct drm_dp_mst_topology_mgr *mgr,
+				  struct drm_dp_mst_branch *mstb)
+{
+	struct drm_dp_sideband_msg_tx *txmsg;
+	int len, ret;
+
+	txmsg = kzalloc(sizeof(*txmsg), GFP_KERNEL);
+	if (!txmsg)
+		return -ENOMEM;
+
+	txmsg->dst = mstb;
+	len = build_clear_payload_id_table(txmsg);
+	drm_dp_queue_down_tx(mgr, txmsg);
+
+	ret = drm_dp_mst_wait_tx_reply(mstb, txmsg);
+	if (ret > 0) {
+		if (txmsg->reply.reply_type == 1)
+			ret = -EINVAL;
+		else
+			ret = 0;
+	}
+	kfree(txmsg);
+
+	return ret;
+}
+
 static int drm_dp_create_payload_step1(struct drm_dp_mst_topology_mgr *mgr,
 				       int id,
 				       struct drm_dp_payload *payload)
@@ -2159,10 +2209,7 @@ int drm_dp_mst_topology_mgr_set_mst(struct drm_dp_mst_topology_mgr *mgr, bool ms
 {
 	int ret = 0;
 	struct drm_dp_mst_branch *mstb = NULL;
-	u8 buf;
-	u32 offset = DP_DPCD_REV;
 
-	mutex_lock(&mgr->payload_lock);
 	mutex_lock(&mgr->lock);
 	if (mst_state == mgr->mst_state)
 		goto out_unlock;
@@ -2172,21 +2219,8 @@ int drm_dp_mst_topology_mgr_set_mst(struct drm_dp_mst_topology_mgr *mgr, bool ms
 	if (mst_state) {
 		WARN_ON(mgr->mst_primary);
 
-		ret = drm_dp_dpcd_read(mgr->aux, DP_TRAINING_AUX_RD_INTERVAL,
-				&buf, 1);
-		if (ret != 1) {
-			DRM_DEBUG_KMS("failed to read aux rd interval\n");
-			ret = -EINVAL;
-			goto out_unlock;
-		}
-
-		/* check for EXTENDED_RECEIVER_CAPABILITY_FIELD_PRESENT */
-		if (buf & BIT(7))
-			offset = 0x2200;
-
 		/* get dpcd info */
-		ret = drm_dp_dpcd_read(mgr->aux, offset, mgr->dpcd,
-				DP_RECEIVER_CAP_SIZE);
+		ret = drm_dp_dpcd_read(mgr->aux, DP_DPCD_REV, mgr->dpcd, DP_RECEIVER_CAP_SIZE);
 		if (ret != DP_RECEIVER_CAP_SIZE) {
 			DRM_DEBUG_KMS("failed to read DPCD\n");
 			goto out_unlock;
@@ -2224,6 +2258,8 @@ int drm_dp_mst_topology_mgr_set_mst(struct drm_dp_mst_topology_mgr *mgr, bool ms
 			drm_dp_dpcd_write_payload(mgr, 0, &reset_pay);
 		}
 
+		drm_dp_send_clear_payload_table(mgr, mstb);
+
 		queue_work(system_long_wq, &mgr->work);
 
 		ret = 0;
@@ -2234,10 +2270,7 @@ int drm_dp_mst_topology_mgr_set_mst(struct drm_dp_mst_topology_mgr *mgr, bool ms
 		/* this can fail if the device is gone */
 		drm_dp_dpcd_writeb(mgr->aux, DP_MSTM_CTRL, 0);
 		ret = 0;
-		memset(mgr->payloads, 0,
-		       mgr->max_payloads * sizeof(mgr->payloads[0]));
-		memset(mgr->proposed_vcpis, 0,
-		       mgr->max_payloads * sizeof(mgr->proposed_vcpis[0]));
+		memset(mgr->payloads, 0, mgr->max_payloads * sizeof(struct drm_dp_payload));
 		mgr->payload_mask = 0;
 		set_bit(0, &mgr->payload_mask);
 		mgr->vcpi_mask = 0;
@@ -2245,7 +2278,6 @@ int drm_dp_mst_topology_mgr_set_mst(struct drm_dp_mst_topology_mgr *mgr, bool ms
 
 out_unlock:
 	mutex_unlock(&mgr->lock);
-	mutex_unlock(&mgr->payload_lock);
 	if (mstb)
 		drm_dp_put_mst_branch_device(mstb);
 	return ret;
