@@ -161,7 +161,7 @@ size_t ion_system_secure_heap_page_pool_total(struct ion_heap *heap,
 	if (vmid < 0)
 		return 0;
 
-	for (i = 0; i < NUM_ORDERS; i++) {
+	for (i = 0; i < num_orders; i++) {
 		pool = sys_heap->secure_pools[vmid][i];
 		total += ion_page_pool_total(pool, true);
 	}
@@ -413,7 +413,7 @@ struct page *split_page_from_secure_pool(struct ion_system_heap *heap,
 	if (!IS_ERR(page))
 		goto got_page;
 
-	for (i = NUM_ORDERS - 2; i >= 0; i--) {
+	for (i = num_orders - 2; i >= 0; i--) {
 		order = orders[i];
 		page = alloc_from_secure_pool_order(heap, buffer, order);
 		if (IS_ERR(page))
