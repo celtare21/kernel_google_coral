@@ -70,7 +70,7 @@
 #define IAXXX_INT_OSC_TRIM_POS	17
 #define IAXXX_INT_OSC_CALIBRATION_MASK	0x7F
 #define IAXXX_INT_OSC_CALIBRATION_POS	25
-#define WAKEUP_TIMEOUT			5000
+#define WAKEUP_TIMEOUT			2500
 #define SPI_WAIT_TIMEOUT		3000
 
 #define iaxxx_ptr2priv(ptr, item) container_of(ptr, struct iaxxx_priv, item)
