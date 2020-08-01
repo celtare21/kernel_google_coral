@@ -65,6 +65,21 @@
 
 #define IAXXX_TFLG_FW_CRASH		0
 
+#ifdef pr_info
+#undef pr_info
+#define pr_info pr_debug
+#endif
+
+#ifdef pr_err
+#undef pr_err
+#define pr_err pr_debug
+#endif
+
+#ifdef pr_notice
+#undef pr_notice
+#define pr_notice pr_debug
+#endif
+
 enum {
 	IAXXX_KTHREAD_RUN = 0,
 	IAXXX_KTHREAD_WAIT = 1,
