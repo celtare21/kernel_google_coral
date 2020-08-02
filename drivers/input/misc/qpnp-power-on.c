@@ -187,7 +187,7 @@ struct qpnp_pon_config {
 	int			bark_irq;
 	u16			s2_cntl_addr;
 	u16			s2_cntl2_addr;
-	bool			was_down;
+	bool			old_state;
 	bool			use_bark;
 	bool			config_reset;
 };
@@ -928,16 +928,11 @@ static struct qpnp_pon_config *qpnp_get_cfg(struct qpnp_pon *pon, u32 pon_type)
 	return NULL;
 }
 
-static const char *state_to_str(bool is_down)
-{
-	return is_down ? "DOWN" : "UP";
-}
-
 static int qpnp_pon_input_dispatch(struct qpnp_pon *pon, u32 pon_type)
 {
 	struct qpnp_pon_config *cfg = NULL;
 	u8  pon_rt_bit = 0;
-	bool key_is_down;
+	u32 key_status;
 	uint pon_rt_sts;
 	u64 elapsed_us;
 	int rc;
@@ -981,10 +976,14 @@ static int qpnp_pon_input_dispatch(struct qpnp_pon *pon, u32 pon_type)
 		return -EINVAL;
 	}
 
-	key_is_down = !!(pon_rt_sts & pon_rt_bit);
+	pr_info("PMIC input: code=%d, sts=0x%hhx, bit=0x%hhx, type=%d, os=%d\n",
+		cfg->key_code, pon_rt_sts, pon_rt_bit, cfg->pon_type,
+		cfg->old_state);
+
+	key_status = pon_rt_sts & pon_rt_bit;
 
 	if (pon->kpdpwr_dbc_enable && cfg->pon_type == PON_KPDPWR) {
-		if (!key_is_down)
+		if (!key_status)
 			pon->kpdpwr_last_release_time = ktime_get();
 	}
 
@@ -992,26 +991,15 @@ static int qpnp_pon_input_dispatch(struct qpnp_pon *pon, u32 pon_type)
 	 * Simulate a press event in case release event occurred without a press
 	 * event
 	 */
-	if (!cfg->was_down && !key_is_down) {
-		pr_warn("PMIC input: KEY_POWER DOWN : inconsistent state. Sending fake event\n");
+	if (!cfg->old_state && !key_status) {
 		input_report_key(pon->pon_input, cfg->key_code, 1);
 		input_sync(pon->pon_input);
 	}
 
-	if (cfg->key_code == KEY_POWER) {
-		pr_info("PMIC input: KEY_POWER %s : sts=0x%hhx, bit=0x%hhx, type=%d\n",
-			state_to_str(key_is_down), pon_rt_sts, pon_rt_bit,
-			cfg->pon_type);
-	} else {
-		pr_info("PMIC input: code=%d, sts=0x%hhx, bit=0x%hhx, type=%d, previous=%s\n",
-			cfg->key_code, pon_rt_sts, pon_rt_bit, cfg->pon_type,
-			state_to_str(cfg->was_down));
-	}
-
-	input_report_key(pon->pon_input, cfg->key_code, key_is_down);
+	input_report_key(pon->pon_input, cfg->key_code, key_status);
 	input_sync(pon->pon_input);
 
-	cfg->was_down = key_is_down;
+	cfg->old_state = !!key_status;
 
 	return 0;
 }
