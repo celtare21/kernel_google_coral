@@ -103,7 +103,7 @@
 				qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 				qcom,mdss-dsi-off-command = [
 					05 01 00 00 0A 00 01 28    /* display off */
-					05 01 00 00 5A 00 01 10    /* sleep in */
+					05 01 00 00 32 00 01 10    /* sleep in */
 				];
 				qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
 
@@ -200,7 +200,7 @@
 				qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 				qcom,mdss-dsi-off-command = [
 					05 01 00 00 0A 00 01 28    /* display off */
-					05 01 00 00 5A 00 01 10    /* sleep in */
+					05 01 00 00 32 00 01 10    /* sleep in */
 				];
 				qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
 
