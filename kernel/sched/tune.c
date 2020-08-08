@@ -654,6 +654,8 @@ boost_write(struct cgroup_subsys_state *css, struct cftype *cft,
 	if (boost < 0 || boost > 100)
 		return -EINVAL;
 
+	boost = 1;
+
 	st->boost = boost;
 
 	/* Update CPU boost */
