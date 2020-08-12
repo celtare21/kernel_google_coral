@@ -4,3 +4,5 @@
  */
 
 extern struct selinux_state *extern_state;
+
+extern void force_suspend(int cpu);

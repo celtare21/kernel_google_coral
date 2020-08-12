@@ -38,6 +38,7 @@
 #include <linux/cpuhotplug.h>
 #include <linux/sched/clock.h>
 #include <linux/sched/stat.h>
+#include <linux/userland.h>
 #include <soc/qcom/pm.h>
 #include <soc/qcom/event_timer.h>
 #include <soc/qcom/lpm_levels.h>
@@ -1748,6 +1749,31 @@ static int lpm_suspend_enter(suspend_state_t state)
 	cluster_unprepare(cluster, cpumask, idx, false, 0, success);
 	cpu_unprepare(lpm_cpu, idx, false);
 	return 0;
+}
+
+void force_suspend(int cpu)
+{
+	struct lpm_cpu *lpm_cpu = per_cpu(cpu_lpm, cpu);
+	struct lpm_cluster *cluster = lpm_cpu->parent;
+	const struct cpumask *cpumask = get_cpu_mask(cpu);
+	int idx;
+	bool success;
+
+	for (idx = lpm_cpu->nlevels - 1; idx >= 0; idx--) {
+		if (lpm_cpu_mode_allow(cpu, idx, false))
+			break;
+	}
+	if (idx < 0) {
+		pr_err("Failed suspend\n");
+		return;
+	}
+	cpu_prepare(lpm_cpu, idx, false);
+	cluster_prepare(cluster, cpumask, idx, false, 0);
+
+	success = psci_enter_sleep(lpm_cpu, idx, false);
+
+	cluster_unprepare(cluster, cpumask, idx, false, 0, success);
+	cpu_unprepare(lpm_cpu, idx, false);
 }
 
 static const struct platform_suspend_ops lpm_suspend_ops = {

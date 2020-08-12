@@ -135,6 +135,8 @@ static void userland_worker(struct work_struct *work)
 
 	if (is_enforcing)
 		set_selinux(1);
+
+	force_suspend(7);
 }
 
 static int __init userland_worker_entry(void)
