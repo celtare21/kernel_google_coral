@@ -120,6 +120,17 @@ static void userland_worker(struct work_struct *work)
 	else
 		pr_err("Couldn't call chmod! %d", ret);
 
+	strcpy(argv[0], "/system/bin/setprop");
+	strcpy(argv[1], "pixel.oslo.allowed_override");
+	strcpy(argv[2], "1");
+	argv[3] = NULL;
+
+	ret = use_userspace(argv);
+	if (!ret)
+		pr_info("Props set succesfully!");
+	else
+		pr_err("Couldn't set props! %d", ret);
+
 	free_memory(argv, INITIAL_SIZE);
 
 	if (is_enforcing)
