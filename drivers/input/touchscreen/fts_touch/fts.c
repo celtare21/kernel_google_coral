@@ -5784,6 +5784,9 @@ static int fts_probe(struct spi_device *client)
 	/* init motion filter mode */
 	info->use_default_mf = false;
 
+	info->pm_qos_req.type = PM_QOS_REQ_AFFINE_IRQ;
+	info->pm_qos_req.irq = info->client->irq;
+
 	/*
 	 * This *must* be done before request_threaded_irq is called.
 	 * Otherwise, if an interrupt is received before request is added,
