@@ -390,8 +390,7 @@
 	status = "disabled";
 };
 
-// Force warm reboot on 'shutdown,thermal' & 'reboot-ab-update'.
+// Force warm reboot on 'shutdown,thermal'
 &msm_poweroff {
 	qcom,force-warm-reboot-on-thermal-shutdown;
-	qcom,force-warm-reboot-on-reboot-ab-update;
 };
