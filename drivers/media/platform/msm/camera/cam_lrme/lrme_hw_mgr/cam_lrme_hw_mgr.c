@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -261,8 +261,6 @@ static int cam_lrme_mgr_util_prepare_hw_update_entries(
 	uint32_t kmd_buf_used_bytes = 0;
 	struct cam_hw_update_entry *hw_entry;
 	struct cam_cmd_buf_desc *cmd_desc = NULL;
-	uintptr_t vaddr_ptr = 0;
-	size_t len = 0;
 
 	hw_device = config_args->hw_device;
 	if (!hw_device) {
@@ -332,17 +330,7 @@ static int cam_lrme_mgr_util_prepare_hw_update_entries(
 			CAM_ERR(CAM_LRME, "Exceed max num of entry");
 			return -EINVAL;
 		}
-		rc = cam_mem_get_cpu_buf(cmd_desc[i].mem_handle,
-			 &vaddr_ptr, &len);
 
-		if (rc || (!vaddr_ptr) || (!len)) {
-			CAM_ERR(CAM_LRME,
-				"hdl=%x vaddr=%pK offset=%d cmdBufflen=%d cmdlen=%d index=%d num_cmd_buf=%d",
-				cmd_desc[i].mem_handle, (void *)vaddr_ptr,
-				cmd_desc[i].offset, cmd_desc[i].length, len, i,
-				prepare->packet->num_cmd_buf);
-			return -EINVAL;
-		}
 		hw_entry[num_entry].handle = cmd_desc[i].mem_handle;
 		hw_entry[num_entry].len = cmd_desc[i].length;
 		hw_entry[num_entry].offset = cmd_desc[i].offset;
@@ -437,27 +425,23 @@ static int cam_lrme_mgr_util_submit_req(void *priv, void *data)
 			CAM_LRME_HW_CMD_SUBMIT,
 			&submit_args, sizeof(struct cam_lrme_hw_submit_args));
 
-		if (rc) {
-			if (rc == -EBUSY) {
-				CAM_DBG(CAM_LRME, "device busy");
-
-				req_prio == 0 ?
-					spin_lock(&hw_device->high_req_lock) :
-					spin_lock(&hw_device->normal_req_lock);
-				list_add(&frame_req->frame_list,
-					(req_prio == 0 ?
-					&hw_device->frame_pending_list_high :
-					&hw_device->frame_pending_list_normal));
-				req_prio == 0 ?
-					spin_unlock(&hw_device->high_req_lock) :
-					spin_unlock(
-						&hw_device->normal_req_lock);
-				rc = 0;
-			} else
-				CAM_ERR(CAM_LRME,
-					"submit request failed for frame req id: %llu rc %d",
-					frame_req->req_id, rc);
+		if (rc == -EBUSY) {
+			CAM_DBG(CAM_LRME, "device busy");
+		} else if (rc) {
+			CAM_ERR(CAM_LRME, "submit request failed rc %d", rc);
 		}
+		if (rc) {
+			req_prio == 0 ? spin_lock(&hw_device->high_req_lock) :
+				spin_lock(&hw_device->normal_req_lock);
+			list_add(&frame_req->frame_list,
+				(req_prio == 0 ?
+				 &hw_device->frame_pending_list_high :
+				 &hw_device->frame_pending_list_normal));
+			req_prio == 0 ? spin_unlock(&hw_device->high_req_lock) :
+				spin_unlock(&hw_device->normal_req_lock);
+		}
+		if (rc == -EBUSY)
+			rc = 0;
 	} else {
 		req_prio == 0 ? spin_lock(&hw_device->high_req_lock) :
 			spin_lock(&hw_device->normal_req_lock);
@@ -673,54 +657,6 @@ static int cam_lrme_mgr_hw_release(void *hw_mgr_priv, void *hw_release_args)
 	return rc;
 }
 
-static int cam_lrme_mgr_hw_dump(void *hw_mgr_priv, void *hw_dump_args)
-{
-	struct cam_hw_dump_args *dump_args = hw_dump_args;
-	struct cam_lrme_hw_mgr *hw_mgr = hw_mgr_priv;
-	struct cam_lrme_device *hw_device;
-	int rc = 0;
-	uint32_t device_index;
-	struct cam_lrme_hw_dump_args lrme_dump_args;
-
-	device_index = CAM_LRME_DECODE_DEVICE_INDEX(dump_args->ctxt_to_hw_map);
-	if (device_index >= hw_mgr->device_count) {
-		CAM_ERR(CAM_LRME, "Invalid device index %d", device_index);
-		return -EPERM;
-	}
-
-	CAM_DBG(CAM_LRME, "Start device index %d", device_index);
-
-	rc = cam_lrme_mgr_util_get_device(hw_mgr, device_index, &hw_device);
-	if (rc) {
-		CAM_ERR(CAM_LRME, "Failed to get hw device");
-		return rc;
-	}
-	rc  = cam_mem_get_cpu_buf(dump_args->buf_handle,
-		&lrme_dump_args.cpu_addr,
-		&lrme_dump_args.buf_len);
-	if (!lrme_dump_args.cpu_addr || !lrme_dump_args.buf_len || rc) {
-		CAM_ERR(CAM_LRME,
-			"lnvalid addr %u len %zu rc %d",
-			dump_args->buf_handle, lrme_dump_args.buf_len, rc);
-		return rc;
-	}
-	lrme_dump_args.offset =  dump_args->offset;
-	lrme_dump_args.request_id = dump_args->request_id;
-
-	rc = hw_device->hw_intf.hw_ops.process_cmd(
-		hw_device->hw_intf.hw_priv,
-		CAM_LRME_HW_CMD_DUMP,
-		&lrme_dump_args,
-		sizeof(struct cam_lrme_hw_dump_args));
-	dump_args->offset = lrme_dump_args.offset;
-
-	rc  = cam_mem_put_cpu_buf(dump_args->buf_handle);
-	if (rc)
-		CAM_ERR(CAM_LRME, "Cpu put failed handle %u",
-			dump_args->buf_handle);
-	return rc;
-}
-
 static int cam_lrme_mgr_hw_flush(void *hw_mgr_priv, void *hw_flush_args)
 {	int rc = 0, i;
 	struct cam_lrme_hw_mgr *hw_mgr = hw_mgr_priv;
@@ -750,20 +686,6 @@ static int cam_lrme_mgr_hw_flush(void *hw_mgr_priv, void *hw_flush_args)
 		CAM_ERR(CAM_LRME, "Error in getting device %d", rc);
 		goto end;
 	}
-
-	spin_lock(&hw_device->high_req_lock);
-	list_for_each_entry(frame_req, &hw_device->frame_pending_list_high,
-		frame_list) {
-		list_del_init(&frame_req->frame_list);
-	}
-	spin_unlock(&hw_device->high_req_lock);
-
-	spin_lock(&hw_device->normal_req_lock);
-	list_for_each_entry(frame_req, &hw_device->frame_pending_list_normal,
-		frame_list) {
-		list_del_init(&frame_req->frame_list);
-	}
-	spin_unlock(&hw_device->normal_req_lock);
 
 	req_list = (struct cam_lrme_frame_request **)args->flush_req_pending;
 	for (i = 0; i < args->num_req_pending; i++) {
@@ -1232,7 +1154,6 @@ int cam_lrme_hw_mgr_init(struct cam_hw_mgr_intf *hw_mgr_intf,
 	hw_mgr_intf->hw_write = NULL;
 	hw_mgr_intf->hw_close = NULL;
 	hw_mgr_intf->hw_flush = cam_lrme_mgr_hw_flush;
-	hw_mgr_intf->hw_dump = cam_lrme_mgr_hw_dump;
 
 	g_lrme_hw_mgr.event_cb = cam_lrme_dev_buf_done_cb;
 

@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -47,7 +47,6 @@
 #define CAM_PERF       (1 << 25)
 
 #define CAM_HYP        (1 << 26)
-#define CAM_IR_LED     (1 << 27)
 #define STR_BUFFER_MAX_LENGTH  1024
 
 /*

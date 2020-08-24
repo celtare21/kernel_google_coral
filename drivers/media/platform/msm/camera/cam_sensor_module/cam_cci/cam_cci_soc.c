@@ -18,8 +18,9 @@ int cam_cci_init(struct v4l2_subdev *sd,
 {
 	uint8_t i = 0, j = 0;
 	int32_t rc = 0;
+	uint32_t val = 0;
 	struct cci_device *cci_dev;
-	enum cci_i2c_master_t master = c_ctrl->cci_info->cci_i2c_master;
+	enum cci_i2c_master_t master = MASTER_0;
 	struct cam_ahb_vote ahb_vote;
 	struct cam_axi_vote axi_vote;
 	struct cam_hw_soc_info *soc_info = NULL;
@@ -47,6 +48,7 @@ int cam_cci_init(struct v4l2_subdev *sd,
 
 	if (cci_dev->ref_count++) {
 		CAM_DBG(CAM_CCI, "ref_count %d", cci_dev->ref_count);
+		master = c_ctrl->cci_info->cci_i2c_master;
 		CAM_DBG(CAM_CCI, "master %d", master);
 		if (master < MASTER_MAX && master >= 0) {
 			mutex_lock(&cci_dev->cci_master_info[master].mutex);
@@ -54,8 +56,6 @@ int cam_cci_init(struct v4l2_subdev *sd,
 			/* Re-initialize the completion */
 			reinit_completion(
 			&cci_dev->cci_master_info[master].reset_complete);
-			reinit_completion(
-			&cci_dev->cci_master_info[master].rd_done);
 			for (i = 0; i < NUM_QUEUES; i++)
 				reinit_completion(
 				&cci_dev->cci_master_info[master].report_q[i]);
@@ -68,12 +68,29 @@ int cam_cci_init(struct v4l2_subdev *sd,
 			else
 				cam_io_w_mb(CCI_M1_RESET_RMSK,
 					base + CCI_RESET_CMD_ADDR);
-			/* wait for reset done irq */
-			rc = wait_for_completion_timeout(
-			&cci_dev->cci_master_info[master].reset_complete,
-				CCI_TIMEOUT);
-			if (rc <= 0)
-				CAM_ERR(CAM_CCI, "wait failed %d", rc);
+			/* Read proper mask from RESET CMD address */
+			val = cam_io_r_mb(base + CCI_RESET_CMD_ADDR);
+			if (((master == MASTER_0) &&
+				(val == CCI_M0_RESET_RMSK)) ||
+				((master == MASTER_1) &&
+				(val == CCI_M1_RESET_RMSK))) {
+				/* Get expected proper mask then
+				 * reset the flag and status
+				 */
+				cci_dev->cci_master_info[
+					master].reset_pending = FALSE;
+				wait_for_completion_timeout(
+				&cci_dev->cci_master_info[
+					master].reset_complete, 0);
+			} else {
+				/* wait for reset done irq */
+				rc = wait_for_completion_timeout(
+				&cci_dev->cci_master_info[
+					master].reset_complete,
+					CCI_TIMEOUT);
+				if (rc <= 0)
+					CAM_ERR(CAM_CCI, "wait failed %d", rc);
+			}
 			mutex_unlock(&cci_dev->cci_master_info[master].mutex);
 		}
 		return 0;
@@ -94,7 +111,6 @@ int cam_cci_init(struct v4l2_subdev *sd,
 
 	/* Re-initialize the completion */
 	reinit_completion(&cci_dev->cci_master_info[master].reset_complete);
-	reinit_completion(&cci_dev->cci_master_info[master].rd_done);
 	for (i = 0; i < NUM_QUEUES; i++)
 		reinit_completion(
 			&cci_dev->cci_master_info[master].report_q[i]);
@@ -130,12 +146,12 @@ int cam_cci_init(struct v4l2_subdev *sd,
 		}
 	}
 
-	cci_dev->cci_master_info[master].reset_pending = TRUE;
+	cci_dev->cci_master_info[MASTER_0].reset_pending = TRUE;
 	cam_io_w_mb(CCI_RESET_CMD_RMSK, base +
 			CCI_RESET_CMD_ADDR);
 	cam_io_w_mb(0x1, base + CCI_RESET_CMD_ADDR);
 	rc = wait_for_completion_timeout(
-		&cci_dev->cci_master_info[master].reset_complete,
+		&cci_dev->cci_master_info[MASTER_0].reset_complete,
 		CCI_TIMEOUT);
 	if (rc <= 0) {
 		CAM_ERR(CAM_CCI, "wait_for_completion_timeout");
@@ -207,8 +223,6 @@ static void cam_cci_init_cci_params(struct cci_device *new_cci_dev)
 			&new_cci_dev->cci_master_info[i].reset_complete);
 		init_completion(
 			&new_cci_dev->cci_master_info[i].th_complete);
-		init_completion(
-			&new_cci_dev->cci_master_info[i].rd_done);
 
 		for (j = 0; j < NUM_QUEUES; j++) {
 			mutex_init(&new_cci_dev->cci_master_info[i].mutex_q[j]);
@@ -410,9 +424,7 @@ int cam_cci_soc_release(struct cci_device *cci_dev)
 	cci_dev->cci_state = CCI_STATE_DISABLED;
 	cci_dev->cycles_per_us = 0;
 
-	rc = cam_cpas_stop(cci_dev->cpas_handle);
-	if (rc)
-		CAM_ERR(CAM_CCI, "cpas stop failed %d", rc);
+	cam_cpas_stop(cci_dev->cpas_handle);
 
 	return rc;
 }
