@@ -425,10 +425,11 @@ static int cam_lrme_mgr_util_submit_req(void *priv, void *data)
 			CAM_LRME_HW_CMD_SUBMIT,
 			&submit_args, sizeof(struct cam_lrme_hw_submit_args));
 
-		if (rc == -EBUSY)
+		if (rc == -EBUSY) {
 			CAM_DBG(CAM_LRME, "device busy");
-		else if (rc)
+		} else if (rc) {
 			CAM_ERR(CAM_LRME, "submit request failed rc %d", rc);
+		}
 		if (rc) {
 			req_prio == 0 ? spin_lock(&hw_device->high_req_lock) :
 				spin_lock(&hw_device->normal_req_lock);

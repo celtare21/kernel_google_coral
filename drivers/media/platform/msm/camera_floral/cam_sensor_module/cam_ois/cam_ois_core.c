@@ -34,17 +34,18 @@ int cam_ois_calibration(struct cam_ois_ctrl_t *o_ctrl,
 	int rc;
 
 	rc = GyroReCalib(&o_ctrl->io_master_info, cal_result);
-	if (rc != 0)
+	if (rc != 0) {
 		CAM_ERR(CAM_OIS,
 			"[OISCali] ReCalib FAIL, rc = %d", rc);
-	else {
+	} else {
 		rc = WrGyroOffsetData();
-		if (rc != 0)
+		if (rc != 0) {
 			CAM_ERR(CAM_OIS,
 				"[OISCali] WrGyro FAIL, rc = %d", rc);
-		else
+		} else {
 			CAM_INFO(CAM_OIS,
 				"[OISCali] SUCCESS");
+		}
 	}
 
 	return rc;
