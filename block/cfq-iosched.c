@@ -659,7 +659,7 @@ static inline void cfqg_put(struct cfq_group *cfqg)
 }
 
 #define cfq_log_cfqq(cfqd, cfqq, fmt, args...)	do {			\
-	if (likely(!blk_trace_note_message_enabled((bfqd)->queue)))	\
+	if (likely(!blk_trace_note_message_enabled((cfqd)->queue)))	\
 		break;							\
 	blk_add_cgroup_trace_msg((cfqd)->queue,				\
 			cfqg_to_blkg((cfqq)->cfqg)->blkcg,		\
@@ -670,8 +670,6 @@ static inline void cfqg_put(struct cfq_group *cfqg)
 } while (0)
 
 #define cfq_log_cfqg(cfqd, cfqg, fmt, args...)	do {			\
-	if (likely(!blk_trace_note_message_enabled((bfqd)->queue)))	\
-		break;							\
 	blk_add_cgroup_trace_msg((cfqd)->queue,				\
 			cfqg_to_blkg(cfqg)->blkcg, fmt, ##args);	\
 } while (0)
@@ -789,6 +787,8 @@ static inline void cfqg_get(struct cfq_group *cfqg) { }
 static inline void cfqg_put(struct cfq_group *cfqg) { }
 
 #define cfq_log_cfqq(cfqd, cfqq, fmt, args...)	\
+	if (likely(!blk_trace_note_message_enabled((cfqd)->queue)))	\
+		break;							\
 	blk_add_trace_msg((cfqd)->queue, "cfq%d%c%c " fmt, (cfqq)->pid,	\
 			cfq_cfqq_sync((cfqq)) ? 'S' : 'A',		\
 			cfqq_type((cfqq)) == SYNC_NOIDLE_WORKLOAD ? 'N' : ' ',\
