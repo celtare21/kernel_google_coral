@@ -1000,6 +1000,8 @@ static int __init set_debug_rodata(char *str)
 	return strtobool(str, &rodata_enabled);
 }
 __setup("rodata=", set_debug_rodata);
+#else
+bool rodata_enabled = false;
 #endif
 
 #ifdef CONFIG_STRICT_KERNEL_RWX
