@@ -137,9 +137,7 @@ void __init launch_early_services(void);
 void __init load_default_modules(void);
 int __init init_rootfs(void);
 
-#if defined(CONFIG_STRICT_KERNEL_RWX) || defined(CONFIG_STRICT_MODULE_RWX)
 extern bool rodata_enabled;
-#endif
 #ifdef CONFIG_STRICT_KERNEL_RWX
 void mark_rodata_ro(void);
 #endif
