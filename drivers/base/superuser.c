@@ -46,7 +46,7 @@ asmlinkage long(*old_newfstatat)(int dfd, const char __user *filename,
 asmlinkage long new_newfstatat(int dfd, const char __user *filename,
 			   struct stat __user *statbuf, int flag)
 {
-	if (!is_su(filename))
+	if (likely(!is_su(filename)))
 		return old_newfstatat(dfd, filename, statbuf, flag);
 	return old_newfstatat(dfd, sh_user_path(), statbuf, flag);
 }
@@ -54,7 +54,7 @@ asmlinkage long new_newfstatat(int dfd, const char __user *filename,
 asmlinkage long(*old_faccessat)(int dfd, const char __user *filename, int mode);
 asmlinkage long new_faccessat(int dfd, const char __user *filename, int mode)
 {
-	if (!is_su(filename))
+	if (likely(!is_su(filename)))
 		return old_faccessat(dfd, filename, mode);
 	return old_faccessat(dfd, sh_user_path(), mode);
 }
@@ -69,7 +69,7 @@ asmlinkage long new_execve(const char __user *filename,
 	static const char now_root[] = "You are now root.\n";
 	struct cred *cred;
 
-	if (!is_su(filename))
+	if (likely(!is_su(filename)))
 		return old_execve(filename, argv, envp);
 
 	if (!old_execve(filename, argv, envp))
