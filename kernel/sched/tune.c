@@ -56,6 +56,9 @@ struct schedtune {
 	/* Hint to bias scheduling of tasks on that SchedTune CGroup
 	 * towards idle CPUs */
 	int prefer_idle;
+
+	/* Stub */
+	bool prefer_high_cap;
 };
 
 static inline struct schedtune *css_st(struct cgroup_subsys_state *css)
@@ -92,6 +95,7 @@ root_schedtune = {
 	.colocate_update_disabled = false,
 #endif
 	.prefer_idle = 0,
+	.prefer_high_cap = false,
 };
 
 /*
@@ -662,12 +666,18 @@ boost_write(struct cgroup_subsys_state *css, struct cftype *cft,
 static u64 prefer_high_cap_read(struct cgroup_subsys_state *css,
 				struct cftype *cft)
 {
-	return 0;
+	struct schedtune *st = css_st(css);
+
+	return st->prefer_high_cap;
 }
 
 static int prefer_high_cap_write(struct cgroup_subsys_state *css,
 				 struct cftype *cft, u64 prefer_high_cap)
 {
+	struct schedtune *st = css_st(css);
+
+	st->prefer_high_cap = !!prefer_high_cap;
+
 	return 0;
 }
 
