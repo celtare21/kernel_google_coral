@@ -577,12 +577,7 @@ boost_write(struct cgroup_subsys_state *css, struct cftype *cft,
 {
 	struct schedtune *st = css_st(css);
 
-	if (boost < 0 || boost > 100)
-		return -EINVAL;
-
-	boost = 1;
-
-	st->boost = boost;
+	st->boost = 1;
 
 	/* Update CPU boost */
 	schedtune_boostgroup_update(st->idx, st->boost);
