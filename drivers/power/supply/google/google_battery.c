@@ -673,8 +673,10 @@ void dump_ssoc_state(struct batt_ssoc_state *ssoc_state, struct logbuffer *log)
 		  ssoc_state->rl_status,
 		  ssoc_state->bd_trickle_cnt);
 
-	logbuffer_log(log, "%s", ssoc_state->ssoc_state_cstr);
 	pr_debug("%s\n", ssoc_state->ssoc_state_cstr);
+	if (log) {
+		logbuffer_log(log, "%s", ssoc_state->ssoc_state_cstr);
+	}
 }
 
 /* ------------------------------------------------------------------------- */
