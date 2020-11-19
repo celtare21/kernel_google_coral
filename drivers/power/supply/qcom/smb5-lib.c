@@ -33,12 +33,7 @@
 		      chg->name, __func__, ##__VA_ARGS__)	\
 
 #define smblib_dbg(chg, reason, fmt, ...)			\
-	do {							\
-		if (*chg->debug_mask & (reason))		\
-			logbuffer_log(chg->log, "%s: %s: " fmt, \
-				      chg->name, __func__,	\
-				      ##__VA_ARGS__);		\
-	} while (0)
+	do {} while (0)
 
 #define typec_rp_med_high(chg, typec_mode)			\
 	((typec_mode == POWER_SUPPLY_TYPEC_SOURCE_MEDIUM	\
