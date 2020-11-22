@@ -13,6 +13,7 @@
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/i2c.h>
+#include <linux/pm_qos.h>
 #include <linux/mutex.h>
 #include <linux/delay.h>
 #include <linux/interrupt.h>
@@ -157,6 +158,7 @@ struct led_laser_ctrl_t {
 	struct work_struct work;
 	struct workqueue_struct *work_queue;
 	uint32_t hw_version;
+	struct pm_qos_request pm_qos_req;
 	struct {
 		bool is_validated;
 		bool is_power_up;
@@ -714,6 +716,8 @@ static int lm36011_power_up(struct led_laser_ctrl_t *ctrl)
 {
 	int rc;
 
+	pm_qos_update_request(&ctrl->pm_qos_req, 100);
+
 	if (!ctrl->is_power_up) {
 		rc = regulator_set_voltage(ctrl->buck1,
 			PMIC_BUCK1_VOlTAGE_MIN, PMIC_BUCK1_VOlTAGE_MAX);
@@ -997,6 +1001,8 @@ static int lm36011_power_down(struct led_laser_ctrl_t *ctrl)
 				"failed to set pin ctrl to suspend");
 	}
 	mutex_unlock(&lm36011_mutex);
+
+	pm_qos_update_request(&ctrl->pm_qos_req, PM_QOS_DEFAULT_VALUE);
 
 	return rc;
 }
@@ -2258,6 +2264,11 @@ static int32_t lm36011_driver_platform_probe(
 	if (rc)
 		goto error_destroy_class;
 
+	ctrl->pm_qos_req.type = PM_QOS_REQ_AFFINE_IRQ;
+	ctrl->pm_qos_req.irq = ctrl->silego.irq[0];
+	pm_qos_add_request(&ctrl->pm_qos_req, PM_QOS_CPU_DMA_LATENCY,
+			   PM_QOS_DEFAULT_VALUE);
+
 	if (ctrl->hw_version < BUILD_DVT)
 		INIT_WORK(&ctrl->work, cap_sense_workq_job);
 	device_name =
@@ -2336,6 +2347,7 @@ error_remove_sysfs:
 	sysfs_remove_groups(&pdev->dev.kobj, led_laser_dev_groups);
 error_destroy_mutex:
 	mutex_destroy(&ctrl->cam_sensor_mutex);
+	pm_qos_remove_request(&ctrl->pm_qos_req);
 	return rc;
 }
 
