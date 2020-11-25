@@ -5139,10 +5139,6 @@ int smblib_set_prop_thermal_overheat(struct smb_charger *chg,
 
 irqreturn_t default_irq_handler(int irq, void *data)
 {
-	struct smb_irq_data *irq_data = data;
-	struct smb_charger *chg = irq_data->parent_data;
-
-	smblib_dbg(chg, PR_INTERRUPT, "IRQ: %s\n", irq_data->name);
 	return IRQ_HANDLED;
 }
 
@@ -7855,10 +7851,6 @@ static void smblib_lpd_detach_work(struct work_struct *work)
 	dev_info(chg->dev, "%s lpd_stage=%d lpd_reason=%d\n",
 		 __func__, chg->lpd_stage, chg->lpd_reason);
 }
-
-static char *dr_mode_text[] = {
-	"ufp", "dfp", "none"
-};
 
 int smblib_force_dr_mode(struct smb_charger *chg, int mode)
 {
