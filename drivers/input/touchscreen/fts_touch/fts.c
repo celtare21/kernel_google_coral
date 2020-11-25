@@ -1501,7 +1501,9 @@ static void touchsim_work(struct work_struct *work)
 	struct fts_ts_info *info  = container_of(touchsim,
 						struct fts_ts_info,
 						touchsim);
+#ifdef CONFIG_TOUCHSCREEN_HEATMAP
 	ktime_t timestamp = ktime_get();
+#endif
 
 	/* prevent CPU from entering deep sleep */
 	pm_qos_update_request(&info->pm_qos_req, 100);
@@ -1518,7 +1520,9 @@ static void touchsim_work(struct work_struct *work)
 
 	input_sync(info->input_dev);
 
+#ifdef CONFIG_TOUCHSCREEN_HEATMAP
 	heatmap_read(&info->v4l2, ktime_to_ns(timestamp));
+#endif
 
 	pm_qos_update_request(&info->pm_qos_req, PM_QOS_DEFAULT_VALUE);
 }
@@ -2638,6 +2642,7 @@ END:
 	return count;
 }
 
+#ifdef CONFIG_TOUCHSCREEN_HEATMAP
 /* sysfs file node to store heatmap mode
  * "echo cmd > heatmap_mode" to change
  * Possible commands:
@@ -2672,6 +2677,7 @@ static ssize_t fts_heatmap_mode_show(struct device *dev,
 	return scnprintf(buf, PAGE_SIZE, "%d\n",
 			 info->heatmap_mode);
 }
+#endif
 
 static DEVICE_ATTR(infoblock_getdata, (0444),
 		   fts_infoblock_getdata_show, NULL);
@@ -2683,8 +2689,10 @@ static DEVICE_ATTR(fw_file_test, 0444, fts_fw_test_show, NULL);
 static DEVICE_ATTR(status, 0444, fts_status_show, NULL);
 static DEVICE_ATTR(stm_fts_cmd, 0664, stm_fts_cmd_show,
 		   stm_fts_cmd_store);
+#ifdef CONFIG_TOUCHSCREEN_HEATMAP
 static DEVICE_ATTR(heatmap_mode, 0664, fts_heatmap_mode_show,
 		   fts_heatmap_mode_store);
+#endif
 #ifdef USE_ONE_FILE_NODE
 static DEVICE_ATTR(feature_enable, 0664,
 		   fts_feature_enable_show, fts_feature_enable_store);
@@ -2743,7 +2751,9 @@ static struct attribute *fts_attr_group[] = {
 	&dev_attr_fw_file_test.attr,
 	&dev_attr_status.attr,
 	&dev_attr_stm_fts_cmd.attr,
+#ifdef CONFIG_TOUCHSCREEN_HEATMAP
 	&dev_attr_heatmap_mode.attr,
+#endif
 #ifdef USE_ONE_FILE_NODE
 	&dev_attr_feature_enable.attr,
 #else
@@ -3654,6 +3664,7 @@ static bool fts_user_report_event_handler(struct fts_ts_info *info, unsigned
 	return false;
 }
 
+#ifdef CONFIG_TOUCHSCREEN_HEATMAP
 static void heatmap_enable(void)
 {
 	u8 command[] = {FTS_CMD_SYSTEM, SYS_CMD_LOAD_DATA,
@@ -3786,6 +3797,7 @@ static bool read_heatmap_raw(struct v4l2_heatmap *v4l2)
 
 	return true;
 }
+#endif
 
 /* Update a state machine used to toggle control of the touch IC's motion
  * filter.
@@ -3871,7 +3883,9 @@ static void fts_populate_mutual_channel(struct fts_ts_info *info,
 {
 	MutualSenseFrame ms_frame = { 0 };
 	uint32_t frame_index = 0, x, y;
+#ifdef CONFIG_TOUCHSCREEN_HEATMAP
 	uint16_t heatmap_value;
+#endif
 	int result;
 	uint32_t data_type = 0;
 	struct TouchOffloadData2d *mutual_strength =
@@ -4091,11 +4105,13 @@ static irqreturn_t fts_interrupt_handler(int irq, void *handle)
 	}
 #endif
 
+#ifdef CONFIG_TOUCHSCREEN_HEATMAP
 	/* TODO(spfetsch): if the mutual strength heatmap was already read into
 	 * the touch offload interface, use it here instead of reading again.
 	 */
 	if (processed_pointer_event)
 		heatmap_read(&info->v4l2, ktime_to_ns(info->timestamp));
+#endif
 
 	/* Disable the firmware motion filter during single touch */
 	update_motion_filter(info);
@@ -4802,7 +4818,9 @@ static int fts_init_sensing(struct fts_ts_info *info)
 		pr_debug("%s Init after Probe error (ERROR = %08X)\n",
 			__func__, error);
 
+#ifdef CONFIG_TOUCHSCREEN_HEATMAP
 	heatmap_enable();
+#endif
 
 	return error;
 }
@@ -5044,8 +5062,10 @@ static void fts_resume_work(struct work_struct *work)
 
 	info->sensor_sleep = false;
 
+#ifdef CONFIG_TOUCHSCREEN_HEATMAP
 	/* heatmap must be enabled after every chip reset (fts_system_reset) */
 	heatmap_enable();
+#endif
 
 	fts_enableInterrupt(true);
 
@@ -5498,11 +5518,13 @@ static int parse_dt(struct device *dev, struct fts_hw_platform_data *bdata)
 		pr_debug("Automatic firmware update disabled\n");
 	}
 
+#ifdef CONFIG_TOUCHSCREEN_HEATMAP
 	bdata->heatmap_mode_full_init = false;
 	if (of_property_read_bool(np, "st,heatmap_mode_full")) {
 		bdata->heatmap_mode_full_init = true;
 		pr_debug("Full heatmap enabled\n");
 	}
+#endif
 
 	if (panel && panel->funcs && panel->funcs->get_timings &&
 	    panel->funcs->get_timings(panel, 1, &timing) > 0) {
@@ -5773,6 +5795,7 @@ static int fts_probe(struct spi_device *client)
 	info->resume_bit = 1;
 	info->notifier = fts_noti_block;
 
+#ifdef CONFIG_TOUCHSCREEN_HEATMAP
 	/* Set initial heatmap mode based on the device tree configuration.
 	 * Default is partial heatmap mode.
 	 */
@@ -5780,6 +5803,7 @@ static int fts_probe(struct spi_device *client)
 		info->heatmap_mode = FTS_HEATMAP_FULL;
 	else
 		info->heatmap_mode = FTS_HEATMAP_PARTIAL;
+#endif
 
 	/* init motion filter mode */
 	info->use_default_mf = false;
@@ -5807,6 +5831,7 @@ static int fts_probe(struct spi_device *client)
 		goto ProbeErrorExit_6;
 	}
 
+#ifdef CONFIG_TOUCHSCREEN_HEATMAP
 	/*
 	 * Heatmap_probe must be called before irq routine is registered,
 	 * because heatmap_read is called from interrupt context.
@@ -5826,6 +5851,7 @@ static int fts_probe(struct spi_device *client)
 	error = heatmap_probe(&info->v4l2);
 	if (error < OK)
 		goto ProbeErrorExit_6;
+#endif
 
 #ifdef CONFIG_TOUCHSCREEN_OFFLOAD
 	/* Hard-coded C2 caps */
@@ -5893,9 +5919,11 @@ static int fts_probe(struct spi_device *client)
 		queue_delayed_work(info->fwu_workqueue, &info->fwu_work,
 				   msecs_to_jiffies(EXP_FN_WORK_DELAY_MS));
 
+#ifdef CONFIG_TOUCHSCREEN_HEATMAP
 	info->touchsim.wq = alloc_workqueue("fts-heatmap_test-queue",
 					WQ_UNBOUND | WQ_HIGHPRI |
 					WQ_CPU_INTENSIVE, 1);
+#endif
 
 	if (info->touchsim.wq)
 		INIT_WORK(&(info->touchsim.work), touchsim_work);
@@ -5916,8 +5944,9 @@ ProbeErrorExit_7:
 #ifdef CONFIG_TOUCHSCREEN_OFFLOAD
 	touch_offload_cleanup(&info->offload);
 #endif
-
+#ifdef CONFIG_TOUCHSCREEN_HEATMAP
 	heatmap_remove(&info->v4l2);
+#endif
 
 ProbeErrorExit_6:
 	pm_qos_remove_request(&info->pm_qos_req);
@@ -5984,8 +6013,9 @@ static int fts_remove(struct spi_device *client)
 #ifdef CONFIG_TOUCHSCREEN_OFFLOAD
 	touch_offload_cleanup(&info->offload);
 #endif
-
+#ifdef CONFIG_TOUCHSCREEN_HEATMAP
 	heatmap_remove(&info->v4l2);
+#endif
 
 	pm_qos_remove_request(&info->pm_qos_req);
 
