@@ -152,7 +152,7 @@
 				qcom,display-topology = <2 2 1>;
 				qcom,default-topology-index = <0>;
 
-				qcom,panel-roi-alignment = <1440 40 1440 40 1440 40>;
+				qcom,panel-roi-alignment = <720 40 720 40 720 40>;
 				qcom,partial-update-enabled = "single_roi";
 			};
 			timing@1 {
@@ -249,7 +249,7 @@
 				qcom,display-topology = <2 2 1>;
 				qcom,default-topology-index = <0>;
 
-				qcom,panel-roi-alignment = <1440 40 1440 40 1440 40>;
+				qcom,panel-roi-alignment = <720 40 720 40 720 40>;
 				qcom,partial-update-enabled = "single_roi";
 			};
 		};
