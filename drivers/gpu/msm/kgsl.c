@@ -357,6 +357,10 @@ static void kgsl_destroy_ion(struct kgsl_device *device,
 static void mem_entry_destroy(struct kgsl_mem_entry *entry)
 {
 	unsigned int memtype;
+	struct kgsl_device *device = NULL;
+
+	if (entry->memdesc.pagetable != NULL)
+		device = KGSL_MMU_DEVICE(entry->memdesc.pagetable->mmu);
 
 	/* pull out the memtype before the flags get cleared */
 	memtype = kgsl_memdesc_usermem_type(&entry->memdesc);
