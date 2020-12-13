@@ -2292,7 +2292,7 @@ static void _sde_crtc_blend_setup(struct drm_crtc *crtc,
 					mixer[i].hw_ctl);
 
 		/* clear dim_layer settings */
-		if (sde_crtc_state->num_dim_layers) {
+		if (sde_crtc_state->num_dim_layers > 0) {
 			lm = mixer[i].hw_lm;
 			if (lm->ops.clear_dim_layer)
 				lm->ops.clear_dim_layer(lm);
