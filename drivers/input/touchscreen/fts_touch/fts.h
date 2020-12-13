@@ -395,7 +395,8 @@ struct fts_ts_info {
 
 	struct completion bus_resumed;		/* resume_work complete */
 
-	struct pm_qos_request pm_qos_req;
+	struct pm_qos_request pm_spi_req;
+	struct pm_qos_request pm_touch_req;
 
 	struct v4l2_heatmap v4l2;
 
