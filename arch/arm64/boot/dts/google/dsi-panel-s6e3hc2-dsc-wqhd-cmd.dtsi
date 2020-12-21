@@ -58,7 +58,7 @@
 		qcom,ulps-enabled;
 
 		qcom,mdss-dsi-display-timings {
-			timing@0 {
+			timing@1 {
 				qcom,mdss-dsi-panel-framerate = <60>;
 				qcom,mdss-dsi-panel-clockrate = <962150400>;
 				qcom,mdss-mdp-transfer-time-us = <14000>;
@@ -155,7 +155,7 @@
 				qcom,panel-roi-alignment = <720 40 720 40 720 40>;
 				qcom,partial-update-enabled = "single_roi";
 			};
-			timing@1 {
+			timing@0 {
 				qcom,mdss-dsi-panel-framerate = <90>;
 				qcom,mdss-dsi-panel-clockrate = <962150400>;
 				qcom,mdss-mdp-transfer-time-us = <9000>;

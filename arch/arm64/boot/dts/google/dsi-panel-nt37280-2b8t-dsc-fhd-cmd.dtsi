@@ -54,7 +54,7 @@
 		qcom,mdss-pan-physical-width-dimension = <62>;
 		qcom,mdss-pan-physical-height-dimension = <130>;
 		qcom,mdss-dsi-display-timings {
-			timing@0 {
+			timing@1 {
 				qcom,mdss-dsi-panel-clockrate = <550000000>;
 				qcom,mdss-mdp-transfer-time-us = <14000>;
 				qcom,mdss-dsi-panel-framerate = <60>;
@@ -168,7 +168,7 @@
 				qcom,partial-update-enabled = "single_roi";
 			};
 
-			timing@1 {
+			timing@0 {
 				qcom,mdss-dsi-panel-clockrate = <550000000>;
 				qcom,mdss-mdp-transfer-time-us = <9000>;
 				qcom,mdss-dsi-panel-framerate = <90>;
