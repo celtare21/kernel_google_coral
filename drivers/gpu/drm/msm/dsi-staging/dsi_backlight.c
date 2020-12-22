@@ -196,7 +196,6 @@ void dsi_backlight_hbm_dimming_stop(struct dsi_backlight_config *bl)
 {
 	struct dsi_display *display;
 	struct hbm_data *hbm = bl->hbm;
-	struct dsi_panel *panel = container_of(bl, struct dsi_panel, bl_config);
 
 	if (!hbm || !hbm->dimming_active)
 		return;
@@ -210,30 +209,18 @@ void dsi_backlight_hbm_dimming_stop(struct dsi_backlight_config *bl)
 		pr_err("hbm: missing CRTC during dimming end.\n");
 	}
 
-	hbm->dimming_frames_total = 0;
-	hbm->dimming_frames_left = 0;
-	hbm->dimming_active = false;
-
 	if (hbm->dimming_stop_cmd) {
-		int rc = panel->funcs->update_hbm(panel);
+		int rc = dsi_panel_cmd_set_transfer(hbm->panel,
+			hbm->dimming_stop_cmd);
 
-		if (rc == -EOPNOTSUPP)
-			rc = dsi_panel_cmd_set_transfer(hbm->panel,
-				hbm->dimming_stop_cmd);
 		if (rc)
 			pr_err("hbm: failed to disable brightness dimming.\n");
 	}
 
+	hbm->dimming_frames_total = 0;
+	hbm->dimming_frames_left = 0;
 	hbm->dimming_stop_cmd = NULL;
-
-	if (panel->hbm_pending_irc_on) {
-		int rc = panel->funcs->update_irc(panel, true);
-
-		if (rc)
-			pr_err("hmb sv: failed to enble IRC.\n");
-		panel->hbm_pending_irc_on = false;
-	}
-
+	hbm->dimming_active = false;
 	pr_debug("HBM dimming stopped\n");
 }
 
@@ -354,20 +341,17 @@ static u32 dsi_backlight_calculate_hbm(struct dsi_backlight_config *bl,
 
 	range = hbm->ranges + target_range;
 	if (hbm->cur_range != target_range) {
-		dsi_backlight_hbm_dimming_start(bl, range->num_dimming_frames,
-			&range->dimming_stop_cmd);
-		pr_info("hbm: range %d -> %d\n", hbm->cur_range, target_range);
-		hbm->cur_range = target_range;
-
-		rc = panel->funcs->update_hbm(panel);
-		if (rc == -EOPNOTSUPP)
-			rc = dsi_panel_cmd_set_transfer(panel,
-				&range->entry_cmd);
+		rc = dsi_panel_cmd_set_transfer(panel, &range->entry_cmd);
 		if (rc) {
 			pr_err("Failed to send command for range %d\n",
 				target_range);
 			return bl->bl_actual;
 		}
+
+		dsi_backlight_hbm_dimming_start(bl, range->num_dimming_frames,
+			&range->dimming_stop_cmd);
+		pr_info("hbm: range %d -> %d\n", hbm->cur_range, target_range);
+		hbm->cur_range = target_range;
 	}
 
 	rc = dsi_backlight_lerp(
@@ -401,7 +385,7 @@ static u32 dsi_backlight_calculate(struct dsi_backlight_config *bl,
 	bl_temp = mult_frac(bl_temp, bl->bl_scale_ad,
 			MAX_AD_BL_SCALE_LEVEL);
 
-	if (panel->hbm_mode != HBM_MODE_OFF)
+	if (panel->hbm_mode)
 		bl_lvl = dsi_backlight_calculate_hbm(bl, bl_temp);
 	else
 		bl_lvl = dsi_backlight_calculate_normal(bl, bl_temp);
@@ -577,7 +561,7 @@ static ssize_t hbm_mode_store(struct device *dev,
 	struct dsi_backlight_config *bl = NULL;
 	struct dsi_panel *panel = NULL;
 	int rc = 0;
-	int hbm_mode = 0;
+	bool hbm_mode = false;
 
 	/* dev is non-NULL, enforced by sysfs_create_file_ns */
 	bd = to_backlight_device(dev);
@@ -586,17 +570,14 @@ static ssize_t hbm_mode_store(struct device *dev,
 	if (!bl->hbm)
 		return -ENOTSUPP;
 
-	rc = kstrtoint(buf, 10, &hbm_mode);
+	rc = kstrtobool(buf, &hbm_mode);
 	if (rc)
 		return rc;
 
 	panel = container_of(bl, struct dsi_panel, bl_config);
 	rc = dsi_panel_update_hbm(panel, hbm_mode);
-	if (rc) {
-		pr_err("hbm_mode store failed: %d\n", rc);
+	if (rc)
 		return rc;
-	}
-	pr_debug("hbm_mode set to %d\n", panel->hbm_mode);
 
 	return count;
 }
@@ -607,7 +588,7 @@ static ssize_t hbm_mode_show(struct device *dev,
 	struct backlight_device *bd = NULL;
 	struct dsi_backlight_config *bl = NULL;
 	struct dsi_panel *panel = NULL;
-	int hbm_mode = false;
+	bool hbm_mode = false;
 
 	/* dev is non-NULL, enforced by sysfs_create_file_ns */
 	bd = to_backlight_device(dev);
@@ -619,67 +600,15 @@ static ssize_t hbm_mode_show(struct device *dev,
 	panel = container_of(bl, struct dsi_panel, bl_config);
 	hbm_mode = dsi_panel_get_hbm(panel);
 
-	return snprintf(buf, PAGE_SIZE, "%d\n", hbm_mode);
+	return snprintf(buf, PAGE_SIZE, "%s\n", hbm_mode ? "on" : "off");
 }
 
 static DEVICE_ATTR_RW(hbm_mode);
-
-static ssize_t hbm_sv_enabled_store(struct device *dev,
-			       struct device_attribute *attr,
-			       const char *buf, size_t count)
-{
-	struct backlight_device *bd;
-	struct dsi_backlight_config *bl;
-	struct dsi_panel *panel;
-	int rc = 0;
-	bool hbm_sv_enabled = false;
-
-	/* dev is non-NULL, enforced by sysfs_create_file_ns */
-	bd = to_backlight_device(dev);
-	bl = bl_get_data(bd);
-
-	if (!bl->hbm)
-		return -ENOTSUPP;
-
-	rc = kstrtobool(buf, &hbm_sv_enabled);
-	if (rc)
-		return rc;
-
-	panel = container_of(bl, struct dsi_panel, bl_config);
-	if (!hbm_sv_enabled && panel->hbm_mode == HBM_MODE_SV)
-		return -EBUSY;
-
-	panel->hbm_sv_enabled = hbm_sv_enabled;
-
-	return count;
-}
-
-static ssize_t hbm_sv_enabled_show(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	struct backlight_device *bd;
-	struct dsi_backlight_config *bl;
-	struct dsi_panel *panel;
-
-	/* dev is non-NULL, enforced by sysfs_create_file_ns */
-	bd = to_backlight_device(dev);
-	bl = bl_get_data(bd);
-
-	if (!bl->hbm)
-		return snprintf(buf, PAGE_SIZE, "unsupported\n");
-
-	panel = container_of(bl, struct dsi_panel, bl_config);
-	return snprintf(buf, PAGE_SIZE, "%s\n",
-			panel->hbm_sv_enabled ? "true" : "false");
-}
-
-static DEVICE_ATTR_RW(hbm_sv_enabled);
 
 static struct attribute *bl_device_attrs[] = {
 	&dev_attr_alpm_mode.attr,
 	&dev_attr_vr_mode.attr,
 	&dev_attr_hbm_mode.attr,
-	&dev_attr_hbm_sv_enabled.attr,
 	NULL,
 };
 ATTRIBUTE_GROUPS(bl_device);
@@ -1275,7 +1204,7 @@ static int dsi_panel_bl_parse_hbm(struct device *parent,
 	u32 val = 0;
 	bool dimming_used = false;
 
-	panel->hbm_mode = HBM_MODE_OFF;
+	panel->hbm_mode = false;
 
 	if (bl->hbm) {
 		pr_warn("HBM data already parsed, freeing before reparsing\n");

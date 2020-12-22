@@ -77,13 +77,6 @@ enum dsi_panel_physical_type {
 	DSI_DISPLAY_PANEL_TYPE_MAX,
 };
 
-enum hbm_mode_type {
-	HBM_MODE_OFF = 0,
-	HBM_MODE_ON,
-	HBM_MODE_SV,
-	HBM_MODE_MAX,
-};
-
 struct dsi_dfps_capabilities {
 	enum dsi_dfps_type type;
 	u32 min_refresh_rate;
@@ -317,41 +310,23 @@ struct dsi_panel {
 
 	/* the following set of members are guarded by panel_lock */
 	bool vr_mode;
-	enum hbm_mode_type hbm_mode;
-	bool hbm_pending_irc_on;
-	bool hbm_sv_enabled;
-	/* Work used to handle hbmsv hang */
-	struct delayed_work hanghandler_work;
+	bool hbm_mode;
 };
 
 /**
  * struct dsi_panel_funcs - functions that handle panel switch operations
  *
  * @pre_disable: called before panel is about to be disabled
- * @post_enable: called on panel post enable
  * @mode_switch: called when a mode switch is happening
  * @pre_kickoff: called just before frame kickoff
- * @idle: called when updates haven't been received for a while (idle)
- * @wakeup: called when coming out of idle state
  * @pre_lp1: called before power mode is going to be lp1
- *
- * Note: none of these functions above should be called while holding panel_lock
- *
- * @update_hbm: for certain projects hbm/dimming configuration may need to be
- * kept in sync depending on current mode. This function should be called with
- * updated hbm/dimming params
  * @send_nolp: called when sending nolp commands
  */
 struct dsi_panel_funcs {
 	int (*pre_disable)(struct dsi_panel *);
-	int (*post_enable)(struct dsi_panel *);
 	int (*mode_switch)(struct dsi_panel *);
 	int (*pre_kickoff)(struct dsi_panel *);
-	int (*idle)(struct dsi_panel *);
-	int (*wakeup)(struct dsi_panel *);
 	int (*pre_lp1)(struct dsi_panel *);
-	int (*update_hbm)(struct dsi_panel *);
-	int (*update_irc)(struct dsi_panel *, bool);
 	int (*send_nolp)(struct dsi_panel *);
 };
 
@@ -497,14 +472,10 @@ int dsi_panel_get_sn(struct dsi_panel *panel);
 int dsi_panel_get_vendor_extinfo(struct dsi_panel *panel);
 
 /* Set/get high brightness mode */
-int dsi_panel_update_hbm(struct dsi_panel *panel, enum hbm_mode_type);
-enum hbm_mode_type dsi_panel_get_hbm(struct dsi_panel *panel);
+int dsi_panel_update_hbm(struct dsi_panel *panel, bool enable);
+bool dsi_panel_get_hbm(struct dsi_panel *panel);
 
 int dsi_panel_switch_init(struct dsi_panel *panel);
 void dsi_panel_switch_destroy(struct dsi_panel *panel);
-void dsi_panel_switch_put_mode(struct dsi_display_mode *mode);
-
-int dsi_panel_idle(struct dsi_panel *panel);
-int dsi_panel_wakeup(struct dsi_panel *panel);
 
 #endif /* _DSI_PANEL_H_ */

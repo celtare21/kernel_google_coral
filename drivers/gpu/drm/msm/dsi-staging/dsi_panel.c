@@ -25,7 +25,6 @@
 #include "dsi_panel.h"
 #include "dsi_ctrl_hw.h"
 #include "dsi_parser.h"
-#include "sde_trace.h"
 
 /**
  * topology is currently defined by a set of following 3 values:
@@ -40,7 +39,7 @@
 #define DSI_PANEL_VENDOR_DEFAULT_LABEL "Undefined vendor"
 
 #define DEFAULT_MDP_TRANSFER_TIME 14000
-#define HBM_SV_MAX_MS (10 * 60 * 1000) /* 10 min */
+
 #define DEFAULT_PANEL_JITTER_NUMERATOR		2
 #define DEFAULT_PANEL_JITTER_DENOMINATOR	1
 #define DEFAULT_PANEL_JITTER_ARRAY_SIZE		2
@@ -111,8 +110,7 @@ static char dsi_dsc_rc_range_bpg_offset[] = {2, 0, 0, -2, -4, -6, -8, -8,
  */
 
 static int dsi_panel_clear_vr_locked(struct dsi_panel *panel);
-static int dsi_panel_update_hbm_locked(struct dsi_panel *panel,
-					enum hbm_mode_type hbm_mode);
+static int dsi_panel_update_hbm_locked(struct dsi_panel *panel, bool enable);
 
 int dsi_dsc_create_pps_buf_cmd(struct msm_display_dsc_info *dsc, char *buf,
 				int pps_id)
@@ -3329,16 +3327,6 @@ static const struct drm_panel_funcs drm_panel_funcs = {
 	.get_timings = drm_panel_get_timings,
 };
 
-static void dsi_panel_hbmsv_hanghandler_work(struct work_struct *work)
-{
-	struct dsi_panel *panel =
-		    container_of(work, struct dsi_panel, hanghandler_work.work);
-
-	pr_warn("hbmsv hang handler\n");
-	panel->hbm_sv_enabled = false;
-	dsi_panel_update_hbm(panel, HBM_MODE_OFF);
-}
-
 struct dsi_panel *dsi_panel_get(struct device *parent,
 				struct device_node *of_node,
 				struct device_node *parser_node,
@@ -3468,10 +3456,6 @@ struct dsi_panel *dsi_panel_get(struct device *parent,
 	if (rc)
 		pr_err("failed to create buffer for SN, rc=%d\n", rc);
 
-	panel->hbm_sv_enabled = true;
-	INIT_DELAYED_WORK(&panel->hanghandler_work,
-			dsi_panel_hbmsv_hanghandler_work);
-
 	return panel;
 error:
 	kfree(panel);
@@ -3480,8 +3464,6 @@ error:
 
 void dsi_panel_put(struct dsi_panel *panel)
 {
-	cancel_delayed_work_sync(&panel->hanghandler_work);
-
 	dsi_panel_release_sn_buf(panel);
 
 	dsi_panel_release_vendor_extinfo(panel);
@@ -4011,9 +3993,6 @@ void dsi_panel_put_mode(struct dsi_display_mode *mode)
 
 	if (!mode->priv_info)
 		return;
-
-	dsi_panel_switch_put_mode(mode);
-
 	for (i = 0; i < DSI_CMD_SET_MAX; i++)
 		dsi_panel_destroy_cmd_packets(&mode->priv_info->cmd_sets[i]);
 
@@ -4281,7 +4260,7 @@ int dsi_panel_set_lp1(struct dsi_panel *panel)
 		}
 	}
 
-	rc = dsi_panel_update_hbm_locked(panel, HBM_MODE_OFF);
+	rc = dsi_panel_update_hbm_locked(panel, false);
 	if (rc) {
 		pr_err("[%s] couldn't disable HBM mode for LP1 transition\n",
 			panel->name);
@@ -4330,7 +4309,7 @@ int dsi_panel_set_lp2(struct dsi_panel *panel)
 		}
 	}
 
-	rc = dsi_panel_update_hbm_locked(panel, HBM_MODE_OFF);
+	rc = dsi_panel_update_hbm_locked(panel, false);
 	if (rc) {
 		pr_err("[%s] couldn't disable HBM mode for LP2 transition\n",
 			panel->name);
@@ -4396,7 +4375,7 @@ static int dsi_panel_set_vr_locked(struct dsi_panel *panel)
 		return -EINVAL;
 	}
 
-	rc = dsi_panel_update_hbm_locked(panel, HBM_MODE_OFF);
+	rc = dsi_panel_update_hbm_locked(panel, false);
 	if (rc) {
 		pr_err("[%s] couldn't disable HBM mode before VR entry, aborting VR entry\n",
 			panel->name);
@@ -4487,24 +4466,13 @@ bool dsi_panel_get_vr_mode(struct dsi_panel *panel)
 	return vr_mode = panel->vr_mode;
 }
 
-static int dsi_panel_update_hbm_locked(struct dsi_panel *panel,
-					enum hbm_mode_type hbm_mode)
+static int dsi_panel_update_hbm_locked(struct dsi_panel *panel, bool enable)
 {
 	struct dsi_backlight_config *bl = &panel->bl_config;
 	struct hbm_data *hbm = bl->hbm;
 
-	if (!hbm)
+	if (!hbm || (panel->hbm_mode == enable))
 		return 0;
-
-	if (hbm_mode < 0 || hbm_mode >= HBM_MODE_MAX)
-		return -EINVAL;
-	if (hbm_mode == panel->hbm_mode)
-		return 0;
-
-	if (hbm_mode == HBM_MODE_SV && !panel->hbm_sv_enabled) {
-		pr_warn("hbmsv is disabled\n");
-		return -EINVAL;
-	}
 
 	if ((dsi_backlight_get_dpms(bl) != SDE_MODE_DPMS_ON) ||
 		panel->vr_mode) {
@@ -4513,55 +4481,28 @@ static int dsi_panel_update_hbm_locked(struct dsi_panel *panel,
 		return -EINVAL;
 	}
 
-	if (hbm_mode == HBM_MODE_SV)
-		mod_delayed_work(system_wq, &panel->hanghandler_work,
-				      msecs_to_jiffies(HBM_SV_MAX_MS));
-	else
-		cancel_delayed_work(&panel->hanghandler_work);
-
-	panel->hbm_pending_irc_on =
-		(panel->hbm_mode == HBM_MODE_SV && hbm_mode == HBM_MODE_OFF);
-
-	hbm->cur_range = HBM_RANGE_MAX;
-
-	if (hbm_mode == HBM_MODE_SV) {
-		int rc = panel->funcs->update_irc(panel, false);
-
-		if (rc != 0 && rc != -EOPNOTSUPP)
-			pr_err("[%s] failed to disable IRC, rc=%d\n",
-			       panel->name, rc);
-	} else if (hbm_mode == HBM_MODE_ON && panel->hbm_mode == HBM_MODE_SV) {
-		int rc = panel->funcs->update_irc(panel, true);
-
-		if (rc != 0 && rc != -EOPNOTSUPP)
-			pr_err("[%s] failed to enable IRC, rc=%d\n",
-			       panel->name, rc);
-	}
-
-	panel->hbm_mode = hbm_mode;
-
 	/* When HBM exit is requested, send HBM exit commands
 	 * immediately to avoid conflict with subsequent backlight ops.
 	 */
-	if (hbm_mode == HBM_MODE_OFF) {
-		int rc;
+	if (!enable) {
+		int rc = dsi_panel_cmd_set_transfer(panel, &hbm->exit_cmd);
+
+		if (rc)
+			pr_err("[%s] failed to send HBM exit cmd, rc=%d\n",
+				panel->name, rc);
 
 		dsi_backlight_hbm_dimming_start(bl,
 			hbm->exit_num_dimming_frames,
 			&hbm->exit_dimming_stop_cmd);
-
-		rc = panel->funcs->update_hbm(panel);
-		if (rc == -EOPNOTSUPP)
-			rc = dsi_panel_cmd_set_transfer(panel, &hbm->exit_cmd);
-		if (rc)
-			pr_err("[%s] failed to send HBM exit cmd, rc=%d\n",
-				panel->name, rc);
 	}
+
+	panel->hbm_mode = enable;
+	hbm->cur_range = HBM_RANGE_MAX;
 
 	return 0;
 }
 
-int dsi_panel_update_hbm(struct dsi_panel *panel, enum hbm_mode_type hbm_mode)
+int dsi_panel_update_hbm(struct dsi_panel *panel, bool enable)
 {
 	int rc = 0;
 
@@ -4572,7 +4513,7 @@ int dsi_panel_update_hbm(struct dsi_panel *panel, enum hbm_mode_type hbm_mode)
 		return 0;
 
 	mutex_lock(&panel->panel_lock);
-	rc = dsi_panel_update_hbm_locked(panel, hbm_mode);
+	rc = dsi_panel_update_hbm_locked(panel, enable);
 	mutex_unlock(&panel->panel_lock);
 	if (rc)
 		return rc;
@@ -4580,7 +4521,7 @@ int dsi_panel_update_hbm(struct dsi_panel *panel, enum hbm_mode_type hbm_mode)
 	return backlight_update_status(panel->bl_config.bl_device);
 }
 
-enum hbm_mode_type dsi_panel_get_hbm(struct dsi_panel *panel)
+bool dsi_panel_get_hbm(struct dsi_panel *panel)
 {
 	if (!panel) {
 		pr_err("invalid params\n");
@@ -4866,9 +4807,6 @@ int dsi_panel_post_enable(struct dsi_panel *panel)
 		return -EINVAL;
 	}
 
-	if (panel->funcs && panel->funcs->post_enable)
-		return panel->funcs->post_enable(panel);
-
 	mutex_lock(&panel->panel_lock);
 
 	rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_POST_ON);
@@ -4930,7 +4868,7 @@ int dsi_panel_disable(struct dsi_panel *panel)
 		}
 	}
 
-	rc = dsi_panel_update_hbm_locked(panel, HBM_MODE_OFF);
+	rc = dsi_panel_update_hbm_locked(panel, false);
 	if (rc)
 		pr_warn("[%s] couldn't disable HBM mode to unprepare display\n",
 			panel->name);
@@ -5008,26 +4946,4 @@ int dsi_panel_post_unprepare(struct dsi_panel *panel)
 error:
 	mutex_unlock(&panel->panel_lock);
 	return rc;
-}
-
-int dsi_panel_idle(struct dsi_panel *panel)
-{
-	if (unlikely(!panel))
-		return -EINVAL;
-
-	if (panel->funcs && panel->funcs->idle)
-		return panel->funcs->idle(panel);
-
-	return 0;
-}
-
-int dsi_panel_wakeup(struct dsi_panel *panel)
-{
-	if (unlikely(!panel))
-		return -EINVAL;
-
-	if (panel->funcs && panel->funcs->wakeup)
-		return panel->funcs->wakeup(panel);
-
-	return 0;
 }
