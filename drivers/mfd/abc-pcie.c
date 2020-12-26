@@ -1827,7 +1827,7 @@ static irqreturn_t abc_pcie_irq_handler(int irq, void *ptr)
 	u32 msi_cap_val;
 
 	irq = irq - pdev->irq;
-	pr_info_ratelimited("MSI Irq number is : %d\n", irq);
+	pr_debug("MSI Irq number is : %d\n", irq);
 	spin_lock(&abc_dev->lock);
 
 	if (irq >= ABC_MSI_0_TMU_AON && irq <= ABC_MSI_14_FLUSH_DONE) {
