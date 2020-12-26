@@ -695,7 +695,7 @@ static int faceauth_probe(struct platform_device *pdev)
 		       0, sizeof(struct faceauth_debug_entry));
 	}
 
-	data->debug_enabled = true;
+	data->debug_enabled = false;
 	return 0;
 
 exit3:
