@@ -324,8 +324,6 @@ static void decrypted_work(void)
 		pr_info("Fs decrypted!");
 	}
 
-	linux_sh("/system/bin/echo 90 > /sys/kernel/debug/dsi_s6e3hc2_cmd_display/switch/mode");
-	linux_sh("/system/bin/echo 90 > /sys/kernel/debug/dsi_nt37280_2b8t_cmd_display/switch/mode");
 	linux_sh("/system/bin/settings put system peak_refresh_rate 90");
 	linux_sh("/system/bin/settings put system min_refresh_rate 90.0");
 
