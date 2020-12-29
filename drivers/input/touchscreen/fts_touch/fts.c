@@ -5815,7 +5815,7 @@ static int fts_probe(struct spi_device *client)
 	*/
 	info->pm_spi_req.type = PM_QOS_REQ_AFFINE_IRQ;
 	info->pm_spi_req.irq = geni_spi_get_master_irq(client);
-	irq_set_perf_affinity(info->pm_spi_req.irq);
+	irq_set_perf_affinity(info->pm_spi_req.irq, IRQF_PERF_AFFINE);
 	pm_qos_add_request(&info->pm_spi_req, PM_QOS_CPU_DMA_LATENCY,
 			PM_QOS_DEFAULT_VALUE);
 
