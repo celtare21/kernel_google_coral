@@ -2179,9 +2179,9 @@ static long ab_sm_async_notify(struct ab_sm_misc_session *sess,
 	}
 
 	ret = kfifo_out(sc->async_entries, &chip_state, sizeof(chip_state));
-	if (!ret) {
+	if (ret) {
 		mutex_unlock(&sc->async_fifo_lock);
-		return -EFAULT;
+		return ret;
 	}
 
 	if (copy_to_user((void __user *)arg,
@@ -2201,7 +2201,7 @@ static int ab_sm_misc_open(struct inode *ip, struct file *fp)
 	struct miscdevice *misc_dev = fp->private_data;
 	struct ab_state_context *sc =
 		container_of(misc_dev, struct ab_state_context, misc_dev);
-	int ret = 0;
+	int ret;
 
 	sess = kzalloc(sizeof(struct ab_sm_misc_session), GFP_KERNEL);
 	if (!sess) {
@@ -2209,14 +2209,15 @@ static int ab_sm_misc_open(struct inode *ip, struct file *fp)
 		goto out;
 	}
 
-	sess->sc = sc;
-	sess->first_entry = true;
 	ret = kfifo_alloc(&sess->async_entries,
 		AB_KFIFO_ENTRY_SIZE * sizeof(int), GFP_KERNEL);
 	if (ret) {
 		kfree(sess);
-		goto out;
+		return ret;
 	}
+
+	sess->sc = sc;
+	sess->first_entry = true;
 
 	fp->private_data = sess;
 
@@ -2928,6 +2929,11 @@ int ab_sm_init(struct platform_device *pdev)
 	if (ab_sm_ctx == NULL)
 		goto fail_mem_alloc;
 
+	ret = kfifo_alloc(&ab_sm_ctx->state_change_reqs,
+		AB_KFIFO_ENTRY_SIZE * sizeof(struct ab_change_req), GFP_KERNEL);
+	if (ret)
+		goto fail_kfifo_alloc;
+
 	ab_sm_ctx->pdev = pdev;
 	ab_sm_ctx->dev = &pdev->dev;
 	dev_set_drvdata(ab_sm_ctx->dev, ab_sm_ctx);
@@ -3050,10 +3056,6 @@ int ab_sm_init(struct platform_device *pdev)
 	init_completion(&ab_sm_ctx->transition_comp);
 	init_completion(&ab_sm_ctx->notify_comp);
 	init_completion(&ab_sm_ctx->shutdown_comp);
-	ret = kfifo_alloc(&ab_sm_ctx->state_change_reqs,
-		AB_KFIFO_ENTRY_SIZE * sizeof(struct ab_change_req), GFP_KERNEL);
-	if (ret)
-		goto fail_pmic_resources;
 
 	ab_sm_ctx->cold_boot = true;
 	ab_sm_ctx->el2_mode = 0;
@@ -3120,6 +3122,8 @@ fail_ab_ready:
 fail_pmic_resources:
 	misc_deregister(&ab_sm_ctx->misc_dev);
 fail_misc_reg:
+	kfifo_free(&ab_sm_ctx->state_change_reqs);
+fail_kfifo_alloc:
 	devm_kfree(dev, (void *)ab_sm_ctx);
 	ab_sm_ctx = NULL;
 fail_mem_alloc:
