@@ -2994,6 +2994,12 @@ retry:
 	}
 
 	crtc_state = drm_atomic_get_crtc_state(state, enc->crtc);
+	if (IS_ERR(crtc_state)) {
+		SDE_ERROR("error %ld getting crtc %d state\n",
+			  PTR_ERR(crtc_state), DRMID(conn));
+		goto end;
+	}
+
 	conn_state = drm_atomic_get_connector_state(state, conn);
 	if (IS_ERR(conn_state)) {
 		SDE_ERROR("error %d getting connector %d state\n",
@@ -3003,13 +3009,18 @@ retry:
 
 	crtc_state->active = true;
 	ret = drm_atomic_set_crtc_for_connector(conn_state, enc->crtc);
-	if (ret)
-		SDE_ERROR("error %d setting the crtc\n", ret);
+	if (ret) {
+		SDE_ERROR("error %d setting crtc for connector %d\n", ret,
+			  DRMID(conn));
+		goto end;
+	}
 
 	ret = drm_atomic_commit(state);
-	if (ret)
-		SDE_ERROR("Error %d doing the atomic commit\n", ret);
-
+	if (ret) {
+		SDE_ERROR("error %d committing state for connector %d\n", ret,
+			  DRMID(conn));
+		goto end;
+	}
 end:
 	if (state)
 		drm_atomic_state_put(state);
