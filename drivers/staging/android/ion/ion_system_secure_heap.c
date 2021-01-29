@@ -161,7 +161,7 @@ size_t ion_system_secure_heap_page_pool_total(struct ion_heap *heap,
 	if (vmid < 0)
 		return 0;
 
-	for (i = 0; i < num_orders; i++) {
+	for (i = 0; i < NUM_ORDERS; i++) {
 		pool = sys_heap->secure_pools[vmid][i];
 		total += ion_page_pool_total(pool, true);
 	}
@@ -352,6 +352,33 @@ static int ion_system_secure_heap_shrink(struct ion_heap *heap, gfp_t gfp_mask,
 						gfp_mask, nr_to_scan);
 }
 
+static int ion_system_secure_heap_pm_freeze(struct ion_heap *heap)
+{
+	struct ion_system_secure_heap *secure_heap;
+	unsigned long count;
+	struct shrink_control sc = {
+		.gfp_mask = GFP_HIGHUSER,
+	};
+
+	secure_heap = container_of(heap, struct ion_system_secure_heap, heap);
+
+	/* Since userspace is frozen, no more requests will be queued */
+	cancel_delayed_work_sync(&secure_heap->prefetch_work);
+
+	count = heap->shrinker.count_objects(&heap->shrinker, &sc);
+	sc.nr_to_scan = count;
+	heap->shrinker.scan_objects(&heap->shrinker, &sc);
+
+	count = heap->shrinker.count_objects(&heap->shrinker, &sc);
+	if (count) {
+		pr_err("%s: Failed to free all objects - %ld remaining",
+		       __func__, count);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static struct ion_heap_ops system_secure_heap_ops = {
 	.allocate = ion_system_secure_heap_allocate,
 	.free = ion_system_secure_heap_free,
@@ -359,6 +386,9 @@ static struct ion_heap_ops system_secure_heap_ops = {
 	.unmap_kernel = ion_system_secure_heap_unmap_kernel,
 	.map_user = ion_system_secure_heap_map_user,
 	.shrink = ion_system_secure_heap_shrink,
+	.pm = {
+		.freeze = ion_system_secure_heap_pm_freeze,
+	}
 };
 
 struct ion_heap *ion_system_secure_heap_create(struct ion_platform_heap *unused)
@@ -413,7 +443,7 @@ struct page *split_page_from_secure_pool(struct ion_system_heap *heap,
 	if (!IS_ERR(page))
 		goto got_page;
 
-	for (i = num_orders - 2; i >= 0; i--) {
+	for (i = NUM_ORDERS - 2; i >= 0; i--) {
 		order = orders[i];
 		page = alloc_from_secure_pool_order(heap, buffer, order);
 		if (IS_ERR(page))
