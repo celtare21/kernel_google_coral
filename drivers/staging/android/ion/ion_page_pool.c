@@ -26,31 +26,15 @@
 
 #include "ion.h"
 
-/*
- * We avoid atomic_long_t to minimize cache flushes at the cost of possible
- * race which would result in a small accounting inaccuracy that we can
- * tolerate.
- */
-static long nr_total_pages;
-
-static void *ion_page_pool_alloc_pages(struct ion_page_pool *pool)
+static inline void *ion_page_pool_alloc_pages(struct ion_page_pool *pool)
 {
-	struct page *page = alloc_pages(pool->gfp_mask, pool->order);
-
-	if (page) {
-		mod_node_page_state(page_pgdat(page), NR_ION_HEAP,
-				    1 << pool->order);
-		mm_event_count(MM_KERN_ALLOC, 1 << pool->order);
-	}
-
-	return page;
+	return alloc_pages(pool->gfp_mask, pool->order);
 }
 
-static void ion_page_pool_free_pages(struct ion_page_pool *pool,
+static inline void ion_page_pool_free_pages(struct ion_page_pool *pool,
 				     struct page *page)
 {
 	__free_pages(page, pool->order);
-	mod_node_page_state(page_pgdat(page), NR_ION_HEAP, -(1 << pool->order));
 }
 
 static int ion_page_pool_add(struct ion_page_pool *pool, struct page *page)
@@ -64,11 +48,6 @@ static int ion_page_pool_add(struct ion_page_pool *pool, struct page *page)
 		pool->low_count++;
 	}
 
-	mod_node_page_state(page_pgdat(page), NR_ION_HEAP_POOL,
-			    (1 << pool->order));
-	nr_total_pages += 1 << pool->order;
-	mod_node_page_state(page_pgdat(page), NR_KERNEL_MISC_RECLAIMABLE,
-							1 << pool->order);
 	spin_unlock(&pool->lock);
 	return 0;
 }
@@ -88,11 +67,6 @@ static struct page *ion_page_pool_remove(struct ion_page_pool *pool, bool high)
 	}
 
 	list_del(&page->lru);
-	mod_node_page_state(page_pgdat(page), NR_ION_HEAP_POOL,
-			    -(1 << pool->order));
-	nr_total_pages -= 1 << pool->order;
-	mod_node_page_state(page_pgdat(page), NR_KERNEL_MISC_RECLAIMABLE,
-							-(1 << pool->order));
 	return page;
 }
 
@@ -167,14 +141,6 @@ int ion_page_pool_total(struct ion_page_pool *pool, bool high)
 		count += pool->high_count;
 
 	return count << pool->order;
-}
-
-long ion_page_pool_nr_pages(void)
-{
-	/* Correct possible overflow caused by racing writes */
-	if (nr_total_pages < 0)
-		nr_total_pages = 0;
-	return nr_total_pages;
 }
 
 int ion_page_pool_shrink(struct ion_page_pool *pool, gfp_t gfp_mask,
