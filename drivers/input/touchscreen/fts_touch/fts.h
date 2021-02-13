@@ -200,7 +200,7 @@
 
 /**@}*/
 /*********************************************************/
-
+#ifdef CONFIG_TOUCHSCREEN_HEATMAP
 /* **** LOCAL HEATMAP FEATURE *** */
 #define LOCAL_HEATMAP_WIDTH 7
 #define LOCAL_HEATMAP_HEIGHT 7
@@ -219,7 +219,7 @@ struct heatmap_report {
 	strength_t data[LOCAL_HEATMAP_WIDTH * LOCAL_HEATMAP_HEIGHT];
 } __attribute__((packed));
 /* **** END **** */
-
+#endif
 /*
   * Configuration mode
   *
@@ -285,7 +285,9 @@ struct fts_hw_platform_data {
 	int x_axis_max;
 	int y_axis_max;
 	bool auto_fw_update;
+#ifdef CONFIG_TOUCHSCREEN_HEATMAP
 	bool heatmap_mode_full_init;
+#endif
 	struct drm_panel *panel;
 	u32 initial_panel_index;
 };
@@ -310,6 +312,7 @@ typedef enum {
 	FTS_MF_FILTERED_LOCKED	= 2
 } motion_filter_state_t;
 
+#ifdef CONFIG_TOUCHSCREEN_HEATMAP
 /* Heatmap mode selection
  * FTS_HEATMAP_OFF	- no data read
  * FTS_HEATMAP_PARTIAL	- read partial frame
@@ -321,6 +324,7 @@ enum {
 	FTS_HEATMAP_PARTIAL	= 1,
 	FTS_HEATMAP_FULL	= 2
 };
+#endif
 
 /*
   * Forward declaration
@@ -398,7 +402,9 @@ struct fts_ts_info {
 	struct pm_qos_request pm_spi_req;
 	struct pm_qos_request pm_touch_req;
 
+#ifdef CONFIG_TOUCHSCREEN_HEATMAP
 	struct v4l2_heatmap v4l2;
+#endif
 
 #ifdef CONFIG_TOUCHSCREEN_OFFLOAD
 	struct touch_offload_context offload;
@@ -453,7 +459,9 @@ struct fts_ts_info {
 	int cover_enabled;	/* Cover mode */
 	int grip_enabled;	/* Grip mode */
 
+#ifdef CONFIG_TOUCHSCREEN_HEATMAP
 	int heatmap_mode;	/* heatmap mode*/
+#endif
 
 	/* Stop changing motion filter and keep fw design */
 	bool use_default_mf;
