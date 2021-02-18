@@ -718,7 +718,6 @@ struct s6e3hc2_switch_data {
 	struct panel_switch_data base;
 
 	enum s6e3hc2_gamma_state gamma_state;
-	struct kthread_work gamma_work;
 	bool skip_swap;
 };
 
@@ -780,61 +779,6 @@ const struct s6e3hc2_gamma_info {
 struct s6e3hc2_panel_data {
 	u8 *gamma_data[S6E3HC2_NUM_GAMMA_TABLES];
 };
-
-/*
- * s6e3hc2_gamma_update() expects DD-IC to be in unlocked state, so
- * to make sure there are unlock/lock commands when calling this func.
- */
-static void s6e3hc2_gamma_update(struct panel_switch_data *pdata,
-				 const struct dsi_display_mode *mode)
-{
-	struct s6e3hc2_switch_data *sdata;
-	struct s6e3hc2_panel_data *priv_data;
-	int i;
-
-	sdata = container_of(pdata, struct s6e3hc2_switch_data, base);
-	if (sdata->gamma_state != GAMMA_STATE_READ)
-		return;
-
-	if (unlikely(!mode || !mode->priv_info))
-		return;
-
-	priv_data = mode->priv_info->switch_data;
-	if (unlikely(!priv_data))
-		return;
-
-	for (i = 0; i < S6E3HC2_NUM_GAMMA_TABLES; i++) {
-		const struct s6e3hc2_gamma_info *info =
-				&s6e3hc2_gamma_tables[i];
-		/* extra byte for the dsi command */
-		const size_t len = info->len + 1;
-		const void *data = priv_data->gamma_data[i];
-		const bool send_last =
-				!(info->flags & GAMMA_CMD_GROUP_WITH_NEXT);
-
-		if (WARN(!data, "Gamma table #%d not read\n", i))
-			continue;
-
-		if (IS_ERR_VALUE(panel_dsi_write_buf(pdata->panel, data, len,
-					send_last)))
-			pr_warn("failed sending gamma cmd 0x%02x\n",
-				s6e3hc2_gamma_tables[i].cmd);
-	}
-}
-
-static void s6e3hc2_gamma_update_reg_locked(struct panel_switch_data *pdata,
-				 const struct dsi_display_mode *mode)
-{
-	struct dsi_panel *panel = pdata->panel;
-	struct mipi_dsi_device *dsi = &panel->mipi_device;
-
-	if (unlikely(!mode))
-		return;
-
-	DSI_WRITE_CMD_BUF(dsi, unlock_cmd);
-	s6e3hc2_gamma_update(pdata, mode);
-	DSI_WRITE_CMD_BUF(dsi, lock_cmd);
-}
 
 static bool s6e3hc2_is_gamma_available(struct dsi_panel *panel)
 {
@@ -1324,22 +1268,6 @@ abort:
 	return rc;
 }
 
-static void s6e3hc2_gamma_work(struct kthread_work *work)
-{
-	struct s6e3hc2_switch_data *sdata;
-	struct dsi_panel *panel;
-
-	sdata = container_of(work, struct s6e3hc2_switch_data, gamma_work);
-	panel = sdata->base.panel;
-
-	if (!panel)
-		return;
-
-	mutex_lock(&panel->panel_lock);
-	s6e3hc2_gamma_read_tables(&sdata->base);
-	mutex_unlock(&panel->panel_lock);
-}
-
 static void s6e3hc2_gamma_print(struct seq_file *seq,
 				const struct dsi_display_mode *mode)
 {
@@ -1480,7 +1408,6 @@ static struct panel_switch_data *s6e3hc2_switch_create(struct dsi_panel *panel)
 	if (rc)
 		return ERR_PTR(rc);
 
-	kthread_init_work(&sdata->gamma_work, s6e3hc2_gamma_work);
 	debugfs_create_file("gamma", 0600, sdata->base.debug_root,
 			    &sdata->base, &s6e3hc2_read_gamma_fops);
 	debugfs_create_bool("skip_swap", 0600, sdata->base.debug_root,
@@ -1575,7 +1502,6 @@ static void s6e3hc2_perform_switch(struct panel_switch_data *pdata,
 		return;
 
 	s6e3hc2_switch_mode_update(panel, mode, false);
-	s6e3hc2_gamma_update(pdata, mode);
 
 	DSI_WRITE_CMD_BUF(dsi, lock_cmd);
 }
@@ -1601,8 +1527,6 @@ int s6e3hc2_send_nolp_cmds(struct dsi_panel *panel)
 		return rc;
 	}
 
-	s6e3hc2_gamma_update(pdata, cur_mode);
-
 	cmd = &cur_mode->priv_info->cmd_sets[DSI_CMD_SET_POST_NOLP];
 	rc = dsi_panel_cmd_set_transfer(panel, cmd);
 	if (rc)
@@ -1613,21 +1537,6 @@ int s6e3hc2_send_nolp_cmds(struct dsi_panel *panel)
 
 static int s6e3hc2_post_enable(struct panel_switch_data *pdata)
 {
-	struct s6e3hc2_switch_data *sdata;
-	const struct dsi_display_mode *mode;
-
-	if (unlikely(!pdata || !pdata->panel))
-		return -ENOENT;
-
-	sdata = container_of(pdata, struct s6e3hc2_switch_data, base);
-	mode = pdata->panel->cur_mode;
-
-	kthread_flush_work(&sdata->gamma_work);
-	if (sdata->gamma_state == GAMMA_STATE_UNINITIALIZED)
-		kthread_queue_work(&pdata->worker, &sdata->gamma_work);
-	else if (mode && mode->timing.refresh_rate != S6E3HC2_DEFAULT_FPS)
-		s6e3hc2_gamma_update_reg_locked(pdata, mode);
-
 	return 0;
 }
 
