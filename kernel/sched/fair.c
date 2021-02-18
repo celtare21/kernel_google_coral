@@ -3724,7 +3724,7 @@ static inline unsigned long cfs_rq_load_avg(struct cfs_rq *cfs_rq)
 static int idle_balance(struct rq *this_rq, struct rq_flags *rf);
 
 static inline bool task_fits_capacity(struct task_struct *p, long capacity,
-								int cpu, bool locked);
+								int cpu);
 
 static inline void update_misfit_status(struct task_struct *p, struct rq *rq)
 {
@@ -7382,12 +7382,9 @@ static int select_idle_sibling(struct task_struct *p, int prev, int target)
 }
 
 static inline bool task_fits_capacity(struct task_struct *p,
-					long capacity,
-					int cpu, bool locked)
+					long capacity, int cpu)
 {
 	unsigned int margin;
-	int boosted = locked ? schedtune_task_boost_rcu_locked(p) :
-					schedtune_task_boost(p);
 
 	if (capacity_orig_of(task_cpu(p)) > capacity_orig_of(cpu))
 		margin = sched_capacity_margin_down[cpu];
