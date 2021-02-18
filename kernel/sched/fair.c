@@ -7403,11 +7403,12 @@ static inline bool task_fits_max(struct task_struct *p, int cpu, bool locked)
 		return true;
 
 	if ((task_boost_policy(p) == SCHED_BOOST_ON_BIG ||
-			schedtune_task_boost(p) > 0) &&
+			locked ? schedtune_task_boost_rcu_locked(p) :
+					schedtune_task_boost(p) > 0) &&
 			is_min_capacity_cpu(cpu))
 		return false;
 
-	return task_fits_capacity(p, capacity, cpu, locked);
+	return task_fits_capacity(p, capacity, cpu);
 }
 
 struct find_best_target_env {
@@ -7633,7 +7634,7 @@ static inline int find_best_target(struct task_struct *p, int *backup_cpu,
 			if ((!(prefer_idle && idle_cpu(i)) &&
 			     new_util > capacity_orig) ||
 			    (is_min_capacity_cpu(i) &&
-			     !task_fits_capacity(p, capacity_orig, i, true)))
+			     !task_fits_capacity(p, capacity_orig, i)))
 				continue;
 
 			/*
@@ -8424,7 +8425,10 @@ select_task_rq_fair(struct task_struct *p, int prev_cpu, int sd_flag, int wake_f
 	int want_affine = 0;
 	int want_energy = 0;
 	int sync = wake_flags & WF_SYNC;
-	bool sync_boost = sync && cpu >= cpu_rq(cpu)->rd->mid_cap_orig_cpu;
+	int high_cap_cpu = cpu_rq(cpu)->rd->mid_cap_orig_cpu != -1 ?
+			     cpu_rq(cpu)->rd->mid_cap_orig_cpu :
+			     cpu_rq(cpu)->rd->max_cap_orig_cpu;
+	bool sync_boost = sync && cpu >= high_cap_cpu;
 
 	if (energy_aware()) {
 		rcu_read_lock();
@@ -8521,11 +8525,6 @@ pick_cpu:
 			 * indicate that the selection algorithm from mid
 			 * capacity cpu should be used.
 			*/
-			int high_cap_cpu =
-			    cpu_rq(cpu)->rd->mid_cap_orig_cpu != -1 ?
-			     cpu_rq(cpu)->rd->mid_cap_orig_cpu :
-			     cpu_rq(cpu)->rd->max_cap_orig_cpu;
-
 			new_cpu = find_energy_efficient_cpu(energy_sd, p, cpu,
 						    prev_cpu, sync, sync_boost);
 		}
