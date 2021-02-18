@@ -1378,8 +1378,8 @@ static int cam_jpeg_init_devices(struct device_node *of_node,
 	uint32_t *p_num_dma_dev)
 {
 	int count, i, rc;
-	uint32_t num_dev;
-	uint32_t num_dma_dev;
+	uint32_t num_dev = 0;
+	uint32_t num_dma_dev = 0;
 	const char *name = NULL;
 	struct device_node *child_node = NULL;
 	struct platform_device *child_pdev = NULL;
