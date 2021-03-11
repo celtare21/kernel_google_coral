@@ -32,10 +32,10 @@ static inline void atomic_##op(int i, atomic_t *v)			\
 	register int w0 asm ("w0") = i;					\
 	register atomic_t *x1 asm ("x1") = v;				\
 									\
-	asm volatile(							\
+	asm volatile(ARM64_LSE_ATOMIC_INSN(				\
 	/* LSE atomics */						\
 "	prfm	pstl1strm, %[v]\n"					\
-"	" #asm_op "	%w[i], %[v]\n"					\
+"	" #asm_op "	%w[i], %[v]\n")					\
 	: [i] "+r" (w0), [v] "+Q" (v->counter)				\
 	: "r" (x1));							\
 }
@@ -53,10 +53,10 @@ static inline int atomic_fetch_##op##name(int i, atomic_t *v)		\
 	register int w0 asm ("w0") = i;					\
 	register atomic_t *x1 asm ("x1") = v;				\
 									\
-	asm volatile(							\
+	asm volatile(ARM64_LSE_ATOMIC_INSN(				\
 	/* LSE atomics */						\
 "	prfm	pstl1strm, %[v]\n"					\
-"	" #asm_op #mb "	%w[i], %w[i], %[v]"				\
+"	" #asm_op #mb "	%w[i], %w[i], %[v]")				\
 	: [i] "+r" (w0), [v] "+Q" (v->counter)				\
 	: "r" (x1));							\
 									\
@@ -83,11 +83,11 @@ static inline int atomic_add_return##name(int i, atomic_t *v)		\
 	register int w0 asm ("w0") = i;					\
 	register atomic_t *x1 asm ("x1") = v;				\
 									\
-	asm volatile(							\
+	asm volatile(ARM64_LSE_ATOMIC_INSN(				\
 	/* LSE atomics */						\
 	"	prfm	pstl1strm, %[v]\n"				\
 	"	ldadd" #mb "	%w[i], w30, %[v]\n"			\
-	"	add	%w[i], %w[i], w30"				\
+	"	add	%w[i], %w[i], w30")				\
 	: [i] "+r" (w0), [v] "+Q" (v->counter)				\
 	: "r" (x1)							\
 	: "x30", ##cl);							\
@@ -107,11 +107,11 @@ static inline void atomic_and(int i, atomic_t *v)
 	register int w0 asm ("w0") = i;
 	register atomic_t *x1 asm ("x1") = v;
 
-	asm volatile(
+	asm volatile(ARM64_LSE_ATOMIC_INSN(
 	/* LSE atomics */
 	"	prfm	pstl1strm, %[v]\n"
 	"	mvn	%w[i], %w[i]\n"
-	"	stclr	%w[i], %[v]"
+	"	stclr	%w[i], %[v]")
 	: [i] "+&r" (w0), [v] "+Q" (v->counter)
 	: "r" (x1));
 }
@@ -122,11 +122,11 @@ static inline int atomic_fetch_and##name(int i, atomic_t *v)		\
 	register int w0 asm ("w0") = i;					\
 	register atomic_t *x1 asm ("x1") = v;				\
 									\
-	asm volatile(							\
+	asm volatile(ARM64_LSE_ATOMIC_INSN(				\
 	/* LSE atomics */						\
 	"	prfm	pstl1strm, %[v]\n"				\
 	"	mvn	%w[i], %w[i]\n"					\
-	"	ldclr" #mb "	%w[i], %w[i], %[v]"			\
+	"	ldclr" #mb "	%w[i], %w[i], %[v]")			\
 	: [i] "+&r" (w0), [v] "+Q" (v->counter)				\
 	: "r" (x1));							\
 									\
@@ -145,11 +145,11 @@ static inline void atomic_sub(int i, atomic_t *v)
 	register int w0 asm ("w0") = i;
 	register atomic_t *x1 asm ("x1") = v;
 
-	asm volatile(
+	asm volatile(ARM64_LSE_ATOMIC_INSN(
 	/* LSE atomics */
 	"	prfm	pstl1strm, %[v]\n"
 	"	neg	%w[i], %w[i]\n"
-	"	stadd	%w[i], %[v]"
+	"	stadd	%w[i], %[v]")
 	: [i] "+&r" (w0), [v] "+Q" (v->counter)
 	: "r" (x1));
 }
@@ -160,12 +160,12 @@ static inline int atomic_sub_return##name(int i, atomic_t *v)		\
 	register int w0 asm ("w0") = i;					\
 	register atomic_t *x1 asm ("x1") = v;				\
 									\
-	asm volatile(							\
+	asm volatile(ARM64_LSE_ATOMIC_INSN(				\
 	/* LSE atomics */						\
 	"	prfm	pstl1strm, %[v]\n"				\
 	"	neg	%w[i], %w[i]\n"					\
 	"	ldadd" #mb "	%w[i], w30, %[v]\n"			\
-	"	add	%w[i], %w[i], w30"				\
+	"	add	%w[i], %w[i], w30")				\
 	: [i] "+&r" (w0), [v] "+Q" (v->counter)				\
 	: "r" (x1)							\
 	: "x30" , ##cl);						\
@@ -186,11 +186,11 @@ static inline int atomic_fetch_sub##name(int i, atomic_t *v)		\
 	register int w0 asm ("w0") = i;					\
 	register atomic_t *x1 asm ("x1") = v;				\
 									\
-	asm volatile(							\
+	asm volatile(ARM64_LSE_ATOMIC_INSN(				\
 	/* LSE atomics */						\
 	"	prfm	pstl1strm, %[v]\n"				\
 	"	neg	%w[i], %w[i]\n"					\
-	"	ldadd" #mb "	%w[i], %w[i], %[v]"			\
+	"	ldadd" #mb "	%w[i], %w[i], %[v]")			\
 	: [i] "+&r" (w0), [v] "+Q" (v->counter)				\
 	: "r" (x1));							\
 									\
@@ -212,10 +212,10 @@ static inline void atomic64_##op(long i, atomic64_t *v)			\
 	register long x0 asm ("x0") = i;				\
 	register atomic64_t *x1 asm ("x1") = v;				\
 									\
-	asm volatile(							\
+	asm volatile(ARM64_LSE_ATOMIC_INSN(				\
 	/* LSE atomics */						\
 "	prfm	pstl1strm, %[v]\n"					\
-"	" #asm_op "	%[i], %[v]\n"					\
+"	" #asm_op "	%[i], %[v]\n")					\
 	: [i] "+r" (x0), [v] "+Q" (v->counter)				\
 	: "r" (x1));							\
 }
@@ -233,10 +233,10 @@ static inline long atomic64_fetch_##op##name(long i, atomic64_t *v)	\
 	register long x0 asm ("x0") = i;				\
 	register atomic64_t *x1 asm ("x1") = v;				\
 									\
-	asm volatile(							\
+	asm volatile(ARM64_LSE_ATOMIC_INSN(				\
 	/* LSE atomics */						\
 "	prfm	pstl1strm, %[v]\n"					\
-"	" #asm_op #mb "	%[i], %[i], %[v]"				\
+"	" #asm_op #mb "	%[i], %[i], %[v]")				\
 	: [i] "+r" (x0), [v] "+Q" (v->counter)				\
 	: "r" (x1));							\
 									\
@@ -263,11 +263,11 @@ static inline long atomic64_add_return##name(long i, atomic64_t *v)	\
 	register long x0 asm ("x0") = i;				\
 	register atomic64_t *x1 asm ("x1") = v;				\
 									\
-	asm volatile(							\
+	asm volatile(ARM64_LSE_ATOMIC_INSN(				\
 	/* LSE atomics */						\
 	"	prfm	pstl1strm, %[v]\n"				\
 	"	ldadd" #mb "	%[i], x30, %[v]\n"			\
-	"	add	%[i], %[i], x30"				\
+	"	add	%[i], %[i], x30")				\
 	: [i] "+r" (x0), [v] "+Q" (v->counter)				\
 	: "r" (x1)							\
 	: "x30", ##cl);							\
@@ -287,11 +287,11 @@ static inline void atomic64_and(long i, atomic64_t *v)
 	register long x0 asm ("x0") = i;
 	register atomic64_t *x1 asm ("x1") = v;
 
-	asm volatile(
+	asm volatile(ARM64_LSE_ATOMIC_INSN(
 	/* LSE atomics */
 	"	prfm	pstl1strm, %[v]\n"
 	"	mvn	%[i], %[i]\n"
-	"	stclr	%[i], %[v]"
+	"	stclr	%[i], %[v]")
 	: [i] "+&r" (x0), [v] "+Q" (v->counter)
 	: "r" (x1));
 }
@@ -302,11 +302,11 @@ static inline long atomic64_fetch_and##name(long i, atomic64_t *v)	\
 	register long x0 asm ("x0") = i;				\
 	register atomic64_t *x1 asm ("x1") = v;				\
 									\
-	asm volatile(							\
+	asm volatile(ARM64_LSE_ATOMIC_INSN(				\
 	/* LSE atomics */						\
 	"	prfm	pstl1strm, %[v]\n"				\
 	"	mvn	%[i], %[i]\n"					\
-	"	ldclr" #mb "	%[i], %[i], %[v]"			\
+	"	ldclr" #mb "	%[i], %[i], %[v]")			\
 	: [i] "+&r" (x0), [v] "+Q" (v->counter)				\
 	: "r" (x1));							\
 									\
@@ -325,11 +325,11 @@ static inline void atomic64_sub(long i, atomic64_t *v)
 	register long x0 asm ("x0") = i;
 	register atomic64_t *x1 asm ("x1") = v;
 
-	asm volatile(
+	asm volatile(ARM64_LSE_ATOMIC_INSN(
 	/* LSE atomics */
 	"	prfm	pstl1strm, %[v]\n"
 	"	neg	%[i], %[i]\n"
-	"	stadd	%[i], %[v]"
+	"	stadd	%[i], %[v]")
 	: [i] "+&r" (x0), [v] "+Q" (v->counter)
 	: "r" (x1));
 }
@@ -340,12 +340,12 @@ static inline long atomic64_sub_return##name(long i, atomic64_t *v)	\
 	register long x0 asm ("x0") = i;				\
 	register atomic64_t *x1 asm ("x1") = v;				\
 									\
-	asm volatile(							\
+	asm volatile(ARM64_LSE_ATOMIC_INSN(				\
 	/* LSE atomics */						\
 	"	prfm	pstl1strm, %[v]\n"				\
 	"	neg	%[i], %[i]\n"					\
 	"	ldadd" #mb "	%[i], x30, %[v]\n"			\
-	"	add	%[i], %[i], x30"				\
+	"	add	%[i], %[i], x30")				\
 	: [i] "+&r" (x0), [v] "+Q" (v->counter)				\
 	: "r" (x1)							\
 	: "x30", ##cl);							\
@@ -366,11 +366,11 @@ static inline long atomic64_fetch_sub##name(long i, atomic64_t *v)	\
 	register long x0 asm ("x0") = i;				\
 	register atomic64_t *x1 asm ("x1") = v;				\
 									\
-	asm volatile(							\
+	asm volatile(ARM64_LSE_ATOMIC_INSN(				\
 	/* LSE atomics */						\
 	"	prfm	pstl1strm, %[v]\n"				\
 	"	neg	%[i], %[i]\n"					\
-	"	ldadd" #mb "	%[i], %[i], %[v]"			\
+	"	ldadd" #mb "	%[i], %[i], %[v]")			\
 	: [i] "+&r" (x0), [v] "+Q" (v->counter)				\
 	: "r" (x1));							\
 									\
@@ -388,7 +388,7 @@ static inline long atomic64_dec_if_positive(atomic64_t *v)
 {
 	register long x0 asm ("x0") = (long)v;
 
-	asm volatile(
+	asm volatile(ARM64_LSE_ATOMIC_INSN(
 	/* LSE atomics */
 	"	prfm	pstl1strm, %[v]\n"
 	"1:	ldr	x30, %[v]\n"
@@ -398,7 +398,7 @@ static inline long atomic64_dec_if_positive(atomic64_t *v)
 	"	sub	x30, x30, #1\n"
 	"	sub	x30, x30, %[ret]\n"
 	"	cbnz	x30, 1b\n"
-	"2:"
+	"2:")
 	: [ret] "+&r" (x0), [v] "+Q" (v->counter)
 	:
 	: "x30", "cc", "memory");
@@ -419,12 +419,12 @@ static inline unsigned long __cmpxchg_case_##name(volatile void *ptr,	\
 	register unsigned long x1 asm ("x1") = old;			\
 	register unsigned long x2 asm ("x2") = new;			\
 									\
-	asm volatile(							\
+	asm volatile(ARM64_LSE_ATOMIC_INSN(				\
 	/* LSE atomics */						\
 	"	prfm	pstl1strm, %[v]\n"				\
 	"	mov	" #w "30, %" #w "[old]\n"			\
 	"	cas" #mb #sz "\t" #w "30, %" #w "[new], %[v]\n"		\
-	"	mov	%" #w "[ret], " #w "30"				\
+	"	mov	%" #w "[ret], " #w "30")			\
 	: [ret] "+r" (x0), [v] "+Q" (*(unsigned long *)ptr)		\
 	: [old] "r" (x1), [new] "r" (x2)				\
 	: "x30", ##cl);							\
@@ -469,13 +469,13 @@ static inline long __cmpxchg_double##name(unsigned long old1,		\
 	register unsigned long x3 asm ("x3") = new2;			\
 	register unsigned long x4 asm ("x4") = (unsigned long)ptr;	\
 									\
-	asm volatile(							\
+	asm volatile(ARM64_LSE_ATOMIC_INSN(				\
 	/* LSE atomics */						\
 	"	prfm	pstl1strm, %[v]\n"				\
 	"	casp" #mb "\t%[old1], %[old2], %[new1], %[new2], %[v]\n"\
 	"	eor	%[old1], %[old1], %[oldval1]\n"			\
 	"	eor	%[old2], %[old2], %[oldval2]\n"			\
-	"	orr	%[old1], %[old1], %[old2]"			\
+	"	orr	%[old1], %[old1], %[old2]")			\
 	: [old1] "+&r" (x0), [old2] "+&r" (x1),				\
 	  [v] "+Q" (*(unsigned long *)ptr)				\
 	: [new1] "r" (x2), [new2] "r" (x3), [ptr] "r" (x4),		\

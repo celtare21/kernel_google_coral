@@ -35,10 +35,11 @@ static inline unsigned long __xchg_case_##name(unsigned long x,		\
 {									\
 	unsigned long ret, tmp;						\
 									\
-	asm volatile(							\
+	asm volatile(ARM64_LSE_ATOMIC_INSN(				\
 	/* LSE atomics */						\
 	"	prfm	pstl1strm, %2\n"				\
 	"	swp" #acq_lse #rel #sz "\t%" #w "3, %" #w "0, %2\n"	\
+	)								\
 	: "=&r" (ret), "=&r" (tmp), "+Q" (*(unsigned long *)ptr)	\
 	: "r" (x)							\
 	: cl);								\

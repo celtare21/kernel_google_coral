@@ -7,9 +7,21 @@
 #ifdef __ASSEMBLER__
 
 .arch_extension	lse
-#endif	/* __ASSEMBLER__ */
 
-#else 	/* CONFIG_AS_LSE && CONFIG_ARM64_LSE_ATOMICS */
+#else	/* __ASSEMBLER__ */
+
+#ifdef CONFIG_LTO_CLANG
+#define __LSE_PREAMBLE	".arch armv8-a+lse\n"
+#else
+__asm__(".arch_extension	lse");
+#define __LSE_PREAMBLE
+#endif
+
+#define ARM64_LSE_ATOMIC_INSN(lse)					\
+	__LSE_PREAMBLE lse
+
+#endif	/* __ASSEMBLER__ */
+#else	/* CONFIG_AS_LSE && CONFIG_ARM64_LSE_ATOMICS */
 
 #ifndef __ASSEMBLER__
 
