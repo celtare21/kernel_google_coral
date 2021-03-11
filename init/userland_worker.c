@@ -284,6 +284,8 @@ static void encrypted_work(void)
 
 	linux_write("debug.hwui.renderer", "skiavk", false);
 
+	linux_write("ro.iorapd.enable", "true", true);
+
 	linux_write("pixel.oslo.allowed_override", "1", false);
 
 	linux_write("persist.vendor.radio.multisim_swtich_support", "true", false);
