@@ -76,10 +76,10 @@ static struct xfrm_if *xfrmi_decode_session(struct sk_buff *skb)
 	int ifindex;
 	struct xfrm_if *xi;
 
-	if (!skb->dev)
+	if (!secpath_exists(skb) || !skb->dev)
 		return NULL;
 
-	xfrmn = net_generic(dev_net(skb->dev), xfrmi_net_id);
+	xfrmn = net_generic(xs_net(xfrm_input_state(skb)), xfrmi_net_id);
 	ifindex = skb->dev->ifindex;
 
 	for_each_xfrmi_rcu(xfrmn->xfrmi[0], xi) {
@@ -116,6 +116,9 @@ static void xfrmi_unlink(struct xfrmi_net *xfrmn, struct xfrm_if *xi)
 
 static void xfrmi_dev_free(struct net_device *dev)
 {
+	struct xfrm_if *xi = netdev_priv(dev);
+
+	gro_cells_destroy(&xi->gro_cells);
 	free_percpu(dev->tstats);
 }
 
@@ -700,7 +703,7 @@ nla_put_failure:
 	return -EMSGSIZE;
 }
 
-struct net *xfrmi_get_link_net(const struct net_device *dev)
+static struct net *xfrmi_get_link_net(const struct net_device *dev)
 {
 	struct xfrm_if *xi = netdev_priv(dev);
 
