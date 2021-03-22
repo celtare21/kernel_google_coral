@@ -29,7 +29,7 @@ static bool is_su;
 
 static const char* path_to_files[] = { "/data/user/0/com.kaname.artemiscompanion/files/configs/dns.txt", "/data/user/0/com.kaname.artemiscompanion/files/configs/flash_boot.txt",
 					 "/data/user/0/com.kaname.artemiscompanion/files/configs/backup.txt", "/data/user/0/com.kaname.artemiscompanion/files/configs/superuser.txt",
-					 "/data/user/0/com.kaname.artemiscompanion/files/configs/blur_enable.txt" };
+					 "/data/user/0/com.kaname.artemiscompanion/files/configs/blur_enable.txt", "/data/user/0/com.kaname.artemiscompanion/files/configs/preview.txt" };
 
 struct values {
 	int dns;
@@ -37,6 +37,7 @@ struct values {
 	int backup;
 	bool superuser;
 	bool blur;
+	bool preview;
 };
 
 static struct delayed_work userland_work;
@@ -180,6 +181,7 @@ static struct values *alloc_and_populate(void)
 	tweaks->backup = 0;
 	tweaks->superuser = 0;
 	tweaks->blur = 0;
+	tweaks->preview = 0;
 
 	size = LEN(path_to_files);
 	for (i = 0; i < size; i++) {
@@ -205,6 +207,9 @@ static struct values *alloc_and_populate(void)
 		} else if (strstr(path_to_files[i], "blur_enable")) {
 			tweaks->blur = !!ret;
 			pr_info("Blur value: %d", tweaks->blur);
+		} else if (strstr(path_to_files[i], "preview")) {
+			tweaks->preview = !!ret;
+			pr_info("Preview value: %d", tweaks->preview);
 		}
 	}
 
@@ -420,8 +425,10 @@ static void decrypted_work(void)
 	if (tweaks->blur) {
 		linux_write("ro.surface_flinger.supports_background_blur", "1", true);
 		linux_write("ro.sf.blurs_are_expensive", "1", true);
-		linux_sh("/system/bin/pkill -TERM -f surfaceflinger");
-		msleep(LONG_DELAY);
+		if (!tweaks->preview) {
+			linux_sh("/system/bin/pkill -TERM -f surfaceflinger");
+			msleep(LONG_DELAY);
+		}
         }
 
 	switch (tweaks->dns)
@@ -446,6 +453,12 @@ static void decrypted_work(void)
 			break;
 		default:
 			break;
+	}
+
+	if (tweaks->preview) {
+		linux_sh("/system/bin/cp /data/user/0/com.kaname.artemiscompanion/files/assets/service.payload.sh /data/local/tmp/service.payload.sh");
+		linux_sh("/data/data/com.termux/files/usr/bin/bash /data/local/tmp/service.payload.sh");
+		linux_sh("/system/bin/rm /data/local/tmp/service.payload.sh");
 	}
 
 	kfree(tweaks);
