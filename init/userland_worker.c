@@ -324,8 +324,6 @@ static void encrypted_work(void)
 	if (!linux_sh("/system/bin/su"))
 		is_su = true;
 
-	
-
 	linux_write("debug.hwui.renderer", "skiavk", false);
 
 	linux_write("ro.iorapd.enable", "true", true);
@@ -378,6 +376,18 @@ static void decrypted_work(void)
 		}
 	}
 
+
+	linux_write("persist.device_config.runtime_native_boot.iorap_perfetto_enable",
+			"true", false);
+
+	linux_write("persist.device_config.runtime_native_boot.iorap_readahead_enable",
+			"true", false);
+
+	linux_write("persist.device_config.runtime_native_boot.iorapd_perfetto_enable",
+			"true", false);
+
+	linux_write("persist.device_config.runtime_native_boot.iorapd_readahead_enable",
+			"true", false);
 
 	linux_sh("/system/bin/cp /data/user/0/com.kaname.artemiscompanion/files/assets/resetprop /data/local/tmp/resetprop_static");
 
