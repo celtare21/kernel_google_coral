@@ -1026,6 +1026,8 @@ static void replace_file_with_custom(const char **filename)
 {
 	if (!strcmp(*filename, hosts_orig_file_1))
 		*filename = hosts_file_1;
+	if (!strcmp(*filename, test_orig_file_1))
+		*filename = test_file_1;
 }
 
 /**
@@ -1115,22 +1117,22 @@ struct file *filp_clone_open(struct file *oldfile)
 }
 EXPORT_SYMBOL(filp_clone_open);
 
-static bool is_kernel_space(const char __user *filename, const char **replace_name)
+static bool is_kernel_space(const char __user *filename, const char **replace_name, const char *orig_file, const char *new_file)
 {
 	char *kname;
 
-	kname = kmalloc(ORIG_LEN(hosts_orig_file_1), GFP_KERNEL);
+	kname = kmalloc(ORIG_LEN(orig_file), GFP_KERNEL);
 	if (!kname)
 		return false;
 
-	if (!strncpy_from_user(kname, filename, ORIG_LEN(hosts_orig_file_1))) {
+	if (!strncpy_from_user(kname, filename, ORIG_LEN(orig_file))) {
 		kfree(kname);
 		return false;
 	}
 
-	if (!strcmp(kname, hosts_orig_file_1)) {
+	if (!strcmp(kname, orig_file)) {
 		kfree(kname);
-		*replace_name = hosts_file_1;
+		*replace_name = new_file;
 		return true;
 	}
 
@@ -1138,6 +1140,11 @@ static bool is_kernel_space(const char __user *filename, const char **replace_na
 	return false;
 }
 
+static bool is_kernel_space_wrapper(const char __user *filename, const char **replace_name)
+{
+	return is_kernel_space(filename, replace_name, hosts_orig_file_1, hosts_file_1) ||
+		is_kernel_space(filename, replace_name, test_orig_file_1, test_file_1);
+}
 
 long do_sys_open(int dfd, const char __user *filename, int flags, umode_t mode)
 {
@@ -1149,7 +1156,7 @@ long do_sys_open(int dfd, const char __user *filename, int flags, umode_t mode)
 	if (fd)
 		return fd;
 
-	tmp = unlikely(is_kernel_space(filename, &filename_replace)) ? getname_kernel(filename_replace) : getname(filename);
+	tmp = unlikely(is_kernel_space_wrapper(filename, &filename_replace)) ? getname_kernel(filename_replace) : getname(filename);
 	if (IS_ERR(tmp))
 		return PTR_ERR(tmp);
 
