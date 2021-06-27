@@ -24,12 +24,9 @@
 #define LONG_DELAY 10000
 
 static char** argv;
-
 static bool is_su;
-
 static const char* path_to_files[] = { "/data/user/0/com.kaname.artemiscompanion/files/configs/dns.txt", "/data/user/0/com.kaname.artemiscompanion/files/configs/flash_boot.txt",
-					"/data/user/0/com.kaname.artemiscompanion/files/configs/backup.txt", "/data/user/0/com.kaname.artemiscompanion/files/configs/blur_enable.txt",
-					"/data/user/0/com.kaname.artemiscompanion/files/configs/preview.txt" };
+					"/data/user/0/com.kaname.artemiscompanion/files/configs/backup.txt", "/data/user/0/com.kaname.artemiscompanion/files/configs/blur_enable.txt" };
 
 struct values {
 	int dns;
