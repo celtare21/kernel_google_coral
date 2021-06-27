@@ -113,24 +113,35 @@ static struct file *file_open(const char *path, int flags, umode_t rights)
 	return filp;
 }
 
+bool check_file_exists(const char *path_to_file)
+{
+	int ret, retries = 0;
+	struct path path;
+
+        do {
+                ret = kern_path(path_to_file, LOOKUP_FOLLOW, &path);
+                if (ret)
+                        msleep(DELAY);
+        } while (ret && (retries++ < 10));
+
+        if (ret) {
+                pr_err("Couldn't find file %s", path_to_file);
+                return false;
+        }
+
+	return true;
+}
+
 static int read_file_value(const char *path_to_file)
 {
 	struct file* __file = NULL;
-	struct path path;
 	char buf[MAX_CHAR];
-	int number_value, ret, retries = 0;
+	int number_value, ret;
 	loff_t pos = 0;
 
-	do {
-		ret = kern_path(path_to_file, LOOKUP_FOLLOW, &path);
-		if (ret)
-			msleep(DELAY);
-	} while (ret && (retries++ < 10));
-
-	if (ret) {
-		pr_err("Couldn't find file %s", path_to_file);
+	ret = check_file_exists(path_to_file);
+	if (!ret)
 		return -1;
-	}
 
 	__file = file_open(path_to_file, O_RDONLY | O_LARGEFILE, 0);
 	if (__file == NULL || IS_ERR_OR_NULL(__file->f_path.dentry)) {
@@ -274,45 +285,26 @@ static inline int linux_chmod(const char* path, const char* perms)
 	return use_userspace(argv);
 }
 
-static inline void set_tee(void)
+static void wait_for_access(void)
 {
-	int ret, retries = 0;
+        int ret, retries = 0;
 
-	do {
-		ret = linux_write("ro.build.fingerprint",
-			"google/coral/coral:11/RQ1A.210205.004/7038034:user/release-keys",
-			true);
-		if (ret)
-			msleep(DELAY);
-	} while (ret && retries++ < 10);
+        do {
+                ret = linux_write("test.prop", "1", true);
+                if (ret)
+                        msleep(DELAY);
+        } while (ret && retries++ < 10);
 
-	linux_write("ro.odm.build.fingerprint",
-		"google/coral/coral:S/SPP1.210122.020.A3/7145137:user/release-keys",
-		true);
+	pr_info("Access granted");
+}
 
-	linux_write("ro.product.build.fingerprint",
-		"google/coral/coral:S/SPP1.210122.020.A3/7145137:user/release-keys",
-		true);
+static void copy_and_chmod(void)
+{
+	linux_sh("/system/bin/cp /data/user/0/com.kaname.artemiscompanion/files/assets/resetprop /data/local/tmp/resetprop_static");
+	linux_chmod("/data/local/tmp/resetprop_static", "755");
 
-	linux_write("ro.system.build.fingerprint",
-		"google/coral/coral:S/SPP1.210122.020.A3/7145137:user/release-keys",
-		true);
-
-	linux_write("ro.system_ext.build.fingerprint",
-		"google/coral/coral:S/SPP1.210122.020.A3/7145137:user/release-keys",
-		true);
-
-	linux_write("ro.vendor.build.fingerprint",
-		"google/coral/coral:S/SPP1.210122.020.A3/7145137:user/release-keys",
-		true);
-
-	linux_write("ro.vendor_dlkm.build.fingerprint",
-		"google/coral/coral:S/SPP1.210122.020.A3/7145137:user/release-keys",
-		true);
-
-	linux_write("ro.bootimage.build.fingerprint",
-		"google/coral/coral:S/SPP1.210122.020.A3/7145137:user/release-keys",
-		true);
+	linux_sh("/system/bin/mkdir /data/local/tmp/kernel");
+	linux_sh("/system/bin/cp /data/user/0/com.kaname.artemiscompanion/files/assets/k_hosts /data/local/tmp/kernel/k_hosts");
 }
 
 static void encrypted_work(void)
@@ -320,7 +312,7 @@ static void encrypted_work(void)
 	if (!linux_sh("/system/bin/su"))
 		is_su = true;
 
-	set_tee();
+	wait_for_access();
 
 	linux_write("ro.iorapd.enable", "false", true);
 
@@ -374,7 +366,6 @@ static void decrypted_work(void)
 		}
 	}
 
-
 	linux_write("persist.device_config.runtime_native_boot.iorap_perfetto_enable",
 			"false", false);
 
@@ -387,9 +378,7 @@ static void decrypted_work(void)
 	linux_write("persist.device_config.runtime_native_boot.iorapd_readahead_enable",
 			"false", false);
 
-	linux_sh("/system/bin/cp /data/user/0/com.kaname.artemiscompanion/files/assets/resetprop /data/local/tmp/resetprop_static");
-
-	linux_chmod("/data/local/tmp/resetprop_static", "755");
+	copy_and_chmod();
 
 	if (tweaks->backup) {
 		if (!is_su)

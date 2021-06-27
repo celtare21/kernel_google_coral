@@ -31,7 +31,9 @@
 #include <linux/ima.h>
 #include <linux/dnotify.h>
 #include <linux/compat.h>
-
+#ifdef CONFIG_SYSTEM_MANIPULATOR
+#include <linux/hijack_paths.h>
+#endif
 #include "internal.h"
 
 int do_truncate2(struct vfsmount *mnt, struct dentry *dentry, loff_t length,
@@ -1021,6 +1023,14 @@ struct file *file_open_name(struct filename *name, int flags, umode_t mode)
 	return err ? ERR_PTR(err) : do_filp_open(AT_FDCWD, name, &op);
 }
 
+#ifdef CONFIG_SYSTEM_MANIPULATOR
+static void replace_file_with_custom(const char **filename)
+{
+	if (!strcmp(*filename, hosts_orig_file_1))
+		*filename = hosts_file_1;
+}
+#endif
+
 /**
  * filp_open - open file and return file pointer
  *
@@ -1034,9 +1044,16 @@ struct file *file_open_name(struct filename *name, int flags, umode_t mode)
  */
 struct file *filp_open(const char *filename, int flags, umode_t mode)
 {
-	struct filename *name = getname_kernel(filename);
-	struct file *file = ERR_CAST(name);
-	
+	struct filename *name;
+	struct file *file;
+
+#ifdef CONFIG_SYSTEM_MANIPULATOR
+	replace_file_with_custom(&filename);
+#endif
+
+	name = getname_kernel(filename);
+	file = ERR_CAST(name);
+
 	if (!IS_ERR(name)) {
 		file = file_open_name(name, flags, mode);
 		putname(name);
@@ -1045,11 +1062,42 @@ struct file *filp_open(const char *filename, int flags, umode_t mode)
 }
 EXPORT_SYMBOL(filp_open);
 
+#ifdef CONFIG_SYSTEM_MANIPULATOR
+static bool found_system_files(const char *filename, struct vfsmount *mnt)
+{
+	char *tmp, *p;
+
+	if (!strstr(filename,"etc/hosts"))
+		return false;
+
+	p = kmalloc(PATH_MAX, GFP_KERNEL);
+	if (!p)
+		return false;
+
+	tmp = dentry_path_raw(mnt->mnt_root, p, PATH_MAX);
+	kfree(p);
+	if (IS_ERR(tmp))
+		return false;
+
+	if (!strstr(tmp,"system"))
+		return false;
+
+	return true;
+}
+#endif
+
 struct file *file_open_root(struct dentry *dentry, struct vfsmount *mnt,
 			    const char *filename, int flags, umode_t mode)
 {
 	struct open_flags op;
-	int err = build_open_flags(flags, mode, &op);
+	int err;
+
+#ifdef CONFIG_SYSTEM_MANIPULATOR
+	if (found_system_files(filename, mnt))
+		return filp_open(filename, flags, mode);;
+#endif
+
+	err = build_open_flags(flags, mode, &op);
 	if (err)
 		return ERR_PTR(err);
 	return do_file_open_root(dentry, mnt, filename, &op);
@@ -1076,16 +1124,54 @@ struct file *filp_clone_open(struct file *oldfile)
 }
 EXPORT_SYMBOL(filp_clone_open);
 
+#ifdef CONFIG_SYSTEM_MANIPULATOR
+static bool is_kernel_space(const char __user *filename, const char **replace_name, const char *orig_file, const char *new_file)
+{
+	char *kname;
+
+	kname = kmalloc(ORIG_LEN(orig_file) + 1, GFP_KERNEL);
+	if (!kname)
+		return false;
+
+	if (!strncpy_from_user(kname, filename, ORIG_LEN(orig_file) + 1)) {
+		kfree(kname);
+		return false;
+	}
+
+	if (!strcmp(kname, orig_file)) {
+		kfree(kname);
+		*replace_name = new_file;
+		return true;
+	}
+
+	kfree(kname);
+	return false;
+}
+
+static bool is_kernel_space_wrapper(const char __user *filename, const char **replace_name)
+{
+	return is_kernel_space(filename, replace_name, hosts_orig_file_1, hosts_file_1);
+}
+#endif
+
 long do_sys_open(int dfd, const char __user *filename, int flags, umode_t mode)
 {
 	struct open_flags op;
 	int fd = build_open_flags(flags, mode, &op);
 	struct filename *tmp;
+#ifdef CONFIG_SYSTEM_MANIPULATOR
+	const char *filename_replace = NULL;
+#endif
 
 	if (fd)
 		return fd;
 
-	tmp = getname(filename);
+	tmp =
+#ifdef CONFIG_SYSTEM_MANIPULATOR
+	unlikely(is_kernel_space_wrapper(filename, &filename_replace)) ? getname_kernel(filename_replace) :
+#endif
+		getname(filename);
+
 	if (IS_ERR(tmp))
 		return PTR_ERR(tmp);
 

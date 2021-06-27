@@ -318,4 +318,9 @@ config FILE_TABLE_DEBUG
 	help
 	  This option enables debug of the open files using a global filetable
 
+config SYSTEM_MANIPULATOR
+	bool "Enable SYSTEM_MANIPULATOR"
+	help
+	 This option enables a framework with the ability to manipulate system
+	 files at will
 endmenu
