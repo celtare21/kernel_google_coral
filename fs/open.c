@@ -1022,14 +1022,10 @@ struct file *file_open_name(struct filename *name, int flags, umode_t mode)
 	return err ? ERR_PTR(err) : do_filp_open(AT_FDCWD, name, &op);
 }
 
-static void replace_system_with_custom(const char **filename)
+static void replace_file_with_custom(const char **filename)
 {
-        if (!strcmp(*filename, hosts_orig_name))
-                *filename = hosts_name;
-	if (!strcmp(*filename, sn_orig_file_1))
-		*filename = sn_file_1;
-	if (!strcmp(*filename, sn_orig_file_2))
-		*filename = sn_file_2;
+	if (!strcmp(*filename, hosts_orig_file_1))
+		*filename = hosts_file_1;
 }
 
 /**
@@ -1048,7 +1044,7 @@ struct file *filp_open(const char *filename, int flags, umode_t mode)
 	struct filename *name;
 	struct file *file;
 
-	replace_system_with_custom(&filename);
+	replace_file_with_custom(&filename);
 
 	name = getname_kernel(filename);
 	file = ERR_CAST(name);
@@ -1065,8 +1061,7 @@ static bool should_hijack_if_system(const char *filename, struct vfsmount *mnt)
 {
 	char *tmp, *p;
 
-	if (!strstr(filename,"etc/hosts") || !strstr(filename, "bin/keystore")
-		|| !strstr(filename, "lib64/libkeystore-attestation-application-id.so"))
+	if (!strstr(filename,"etc/hosts"))
 		return false;
 
 	p = kmalloc(PATH_MAX, GFP_KERNEL);
@@ -1074,17 +1069,13 @@ static bool should_hijack_if_system(const char *filename, struct vfsmount *mnt)
 		return false;
 
 	tmp = dentry_path_raw(mnt->mnt_root, p, PATH_MAX);
-	if (IS_ERR(tmp)) {
-		kfree(p);
-		return false;
-	}
-
-	if (!strstr(tmp,"system")) {
-		kfree(p);
-		return false;
-	}
-
 	kfree(p);
+	if (IS_ERR(tmp))
+		return false;
+
+	if (!strstr(tmp,"system"))
+		return false;
+
 	return true;
 }
 
@@ -1095,7 +1086,7 @@ struct file *file_open_root(struct dentry *dentry, struct vfsmount *mnt,
 	int err;
 
 	if (should_hijack_if_system(filename, mnt))
-		return filp_open(hosts_name, flags, mode);;
+		return filp_open(filename, flags, mode);;
 
 	err = build_open_flags(flags, mode, &op);
 	if (err)
@@ -1128,35 +1119,20 @@ static bool is_kernel_space(const char __user *filename, const char **replace_na
 {
 	char *kname;
 
-	kname = kmalloc(HOSTS_ORIG_LEN, GFP_KERNEL);
+	kname = kmalloc(ORIG_LEN(hosts_orig_file_1), GFP_KERNEL);
 	if (!kname)
 		return false;
 
-	if (!strncpy_from_user(kname, filename, ORIG_LEN(hosts_orig_name)) ||
-		!strncpy_from_user(kname, filename, ORIG_LEN(sn_orig_file_1)) ||
-		!strncpy_from_user(kname, filename, ORIG_LEN(sn_orig_file_2))) {
+	if (!strncpy_from_user(kname, filename, ORIG_LEN(hosts_orig_file_1))) {
 		kfree(kname);
 		return false;
 	}
 
-	if (!strcmp(kname, hosts_orig_name)) {
+	if (!strcmp(kname, hosts_orig_file_1)) {
 		kfree(kname);
-		*replace_name = hosts_name;
+		*replace_name = hosts_file_1;
 		return true;
 	}
-
-	if (!strcmp(kname, sn_orig_file_1)) {
-		kfree(kname);
-		*replace_name = sn_file_1;
-		return true;
-	}
-
-        if (!strcmp(kname, sn_orig_file_2)) {
-                kfree(kname);
-		*replace_name = sn_file_2;
-                return true;
-        }
-
 
 	kfree(kname);
 	return false;

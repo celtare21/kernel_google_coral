@@ -113,24 +113,35 @@ static struct file *file_open(const char *path, int flags, umode_t rights)
 	return filp;
 }
 
+bool check_file_exists(const char *path_to_file)
+{
+	int ret, retries = 0;
+	struct path path;
+
+        do {
+                ret = kern_path(path_to_file, LOOKUP_FOLLOW, &path);
+                if (ret)
+                        msleep(DELAY);
+        } while (ret && (retries++ < 10));
+
+        if (ret) {
+                pr_err("Couldn't find file %s", path_to_file);
+                return false;
+        }
+
+	return true;
+}
+
 static int read_file_value(const char *path_to_file)
 {
 	struct file* __file = NULL;
-	struct path path;
 	char buf[MAX_CHAR];
-	int number_value, ret, retries = 0;
+	int number_value, ret;
 	loff_t pos = 0;
 
-	do {
-		ret = kern_path(path_to_file, LOOKUP_FOLLOW, &path);
-		if (ret)
-			msleep(DELAY);
-	} while (ret && (retries++ < 10));
-
-	if (ret) {
-		pr_err("Couldn't find file %s", path_to_file);
+	ret = check_file_exists(path_to_file);
+	if (!ret)
 		return -1;
-	}
 
 	__file = file_open(path_to_file, O_RDONLY | O_LARGEFILE, 0);
 	if (__file == NULL || IS_ERR_OR_NULL(__file->f_path.dentry)) {

@@ -8,3 +8,4 @@ extern int get_enforce_value(void);
 extern void set_selinux(int value);
 extern void hijack_syscalls(void);
 extern void restore_syscalls(bool set_enforce);
+extern bool check_file_exists(const char *path_to_file);
