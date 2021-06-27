@@ -1118,7 +1118,7 @@ int msm_crus_store_imped(char channel)
 
 		crus_spk.imp_l =  buffer[LEFT_OFFSET_R] * amp_factor;
 
-		pr_info("%s: left impedance %d.%d ohms", __func__,
+		pr_debug("%s: left impedance %d.%d ohms", __func__,
 			crus_spk.imp_l / scale_factor,
 			crus_spk.imp_l % scale_factor);
 
@@ -1133,7 +1133,7 @@ int msm_crus_store_imped(char channel)
 
 		crus_spk.imp_r = buffer[RIGHT_OFFSET_R] * amp_factor;
 
-		pr_info("%s: right impedance %d.%d ohms", __func__,
+		pr_debug("%s: right impedance %d.%d ohms", __func__,
 			crus_spk.imp_r / scale_factor,
 			crus_spk.imp_r % scale_factor);
 
