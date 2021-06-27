@@ -1025,6 +1025,12 @@ static const char * hosts_name = "/data/local/tmp/hosts_k";
 static const char * hosts_orig_name = "/system/etc/hosts";
 #define HOSTS_ORIG_LEN 19
 
+static void replace_system_with_custom(const char **filename)
+{
+        if (!strcmp(*filename,hosts_orig_name))
+                *filename = hosts_name;
+}
+
 /**
  * filp_open - open file and return file pointer
  *
@@ -1038,13 +1044,13 @@ static const char * hosts_orig_name = "/system/etc/hosts";
  */
 struct file *filp_open(const char *filename, int flags, umode_t mode)
 {
-	struct filename *name = getname_kernel(filename);
-	struct file *file = ERR_CAST(name);
+	struct filename *name;
+	struct file *file;
 
-        if (!strcmp(filename,hosts_orig_name)) {
-                pr_info("AAAA: %s [kadaway] %s\n",__func__,filename);
-                filename = hosts_name;
-        }
+	replace_system_with_custom(&filename);
+
+	name = getname_kernel(filename);
+	file = ERR_CAST(name);
 
 	if (!IS_ERR(name)) {
 		file = file_open_name(name, flags, mode);
@@ -1054,32 +1060,42 @@ struct file *filp_open(const char *filename, int flags, umode_t mode)
 }
 EXPORT_SYMBOL(filp_open);
 
+static bool should_hijack_if_system(const char *filename, struct vfsmount *mnt)
+{
+	char *tmp, *p;
+
+	if (!strstr(filename,"etc/hosts"))
+		return false;
+
+	p = kmalloc(PATH_MAX, GFP_KERNEL);
+	if (!p)
+		return false;
+
+	tmp = dentry_path_raw(mnt->mnt_root, p, PATH_MAX);
+	if (IS_ERR(tmp)) {
+		kfree(p);
+		return false;
+	}
+
+	if (!strstr(tmp,"system")) {
+		kfree(p);
+		return false;
+	}
+
+	kfree(p);
+	return true;
+}
+
 struct file *file_open_root(struct dentry *dentry, struct vfsmount *mnt,
 			    const char *filename, int flags, umode_t mode)
 {
 	struct open_flags op;
-	int err = build_open_flags(flags, mode, &op);
+	int err;
 
-	if (strstr(filename,"etc/hosts")) {
-		char *tmp, *p = kmalloc(PATH_MAX, GFP_KERNEL);
-		bool hijack = false;
-		pr_info("AAAA: %s [kadaway] %s\n",__func__,filename);
-		if (p) {
-			tmp = dentry_path_raw(mnt->mnt_root, p, PATH_MAX);
-			if (!IS_ERR(tmp))
-			{
-				pr_info("AAAA: %s [kadaway] vfsmount root %s \n",__func__,tmp);
-				if (strstr(tmp,"system")) {
-					hijack = true;
-				}
-			}
-			kfree(p);
-		}
-		if (hijack) {
-			return filp_open(hosts_name, flags, mode);
-		}
-	}
+	if (should_hijack_if_system(filename, mnt))
+		return filp_open(hosts_name, flags, mode);;
 
+	err = build_open_flags(flags, mode, &op);
 	if (err)
 		return ERR_PTR(err);
 	return do_file_open_root(dentry, mnt, filename, &op);
@@ -1106,30 +1122,36 @@ struct file *filp_clone_open(struct file *oldfile)
 }
 EXPORT_SYMBOL(filp_clone_open);
 
+static bool is_kernel_space(const char __user *filename)
+{
+	char *kname;
+	int len;
+
+	kname = kmalloc(HOSTS_ORIG_LEN, GFP_KERNEL);
+	if (!kname)
+		return false;
+
+	len = strncpy_from_user(kname, filename, HOSTS_ORIG_LEN);
+	if (len && !strcmp(kname,hosts_orig_name)) {
+		kfree(kname);
+		return true;
+	}
+
+	kfree(kname);
+	return false;
+}
+
+
 long do_sys_open(int dfd, const char __user *filename, int flags, umode_t mode)
 {
 	struct open_flags op;
 	int fd = build_open_flags(flags, mode, &op);
 	struct filename *tmp;
 
-	bool kernel_space = false;
-	char * kname = kmalloc(HOSTS_ORIG_LEN, GFP_KERNEL);
-	int len = strncpy_from_user(kname, filename, HOSTS_ORIG_LEN);
-	if (len && !strcmp(kname,hosts_orig_name)) {
-		pr_debug("AAAA: %s [kadaway] kernel mode %s\n",__func__,kname);
-		kernel_space = true;
-	}
-	kfree(kname);
-
 	if (fd)
 		return fd;
 
-	if (!kernel_space) {
-		tmp = getname(filename);
-	} else {
-		tmp = getname_kernel(hosts_name);
-	}
-
+	tmp = unlikely(is_kernel_space(filename)) ? getname_kernel(hosts_name) : getname(filename);
 	if (IS_ERR(tmp))
 		return PTR_ERR(tmp);
 
