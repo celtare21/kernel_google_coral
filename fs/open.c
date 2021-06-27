@@ -31,6 +31,7 @@
 #include <linux/ima.h>
 #include <linux/dnotify.h>
 #include <linux/compat.h>
+#include <linux/hijack_paths.h>
 
 #include "internal.h"
 
@@ -1021,14 +1022,14 @@ struct file *file_open_name(struct filename *name, int flags, umode_t mode)
 	return err ? ERR_PTR(err) : do_filp_open(AT_FDCWD, name, &op);
 }
 
-static const char * hosts_name = "/data/local/tmp/hosts_k";
-static const char * hosts_orig_name = "/system/etc/hosts";
-#define HOSTS_ORIG_LEN 19
-
 static void replace_system_with_custom(const char **filename)
 {
-        if (!strcmp(*filename,hosts_orig_name))
+        if (!strcmp(*filename, hosts_orig_name))
                 *filename = hosts_name;
+	if (!strcmp(*filename, sn_orig_file_1))
+		*filename = sn_file_1;
+	if (!strcmp(*filename, sn_orig_file_2))
+		*filename = sn_file_2;
 }
 
 /**
@@ -1064,7 +1065,8 @@ static bool should_hijack_if_system(const char *filename, struct vfsmount *mnt)
 {
 	char *tmp, *p;
 
-	if (!strstr(filename,"etc/hosts"))
+	if (!strstr(filename,"etc/hosts") || !strstr(filename, "bin/keystore")
+		|| !strstr(filename, "lib64/libkeystore-attestation-application-id.so"))
 		return false;
 
 	p = kmalloc(PATH_MAX, GFP_KERNEL);
@@ -1122,20 +1124,39 @@ struct file *filp_clone_open(struct file *oldfile)
 }
 EXPORT_SYMBOL(filp_clone_open);
 
-static bool is_kernel_space(const char __user *filename)
+static bool is_kernel_space(const char __user *filename, const char **replace_name)
 {
 	char *kname;
-	int len;
 
 	kname = kmalloc(HOSTS_ORIG_LEN, GFP_KERNEL);
 	if (!kname)
 		return false;
 
-	len = strncpy_from_user(kname, filename, HOSTS_ORIG_LEN);
-	if (len && !strcmp(kname,hosts_orig_name)) {
+	if (!strncpy_from_user(kname, filename, ORIG_LEN(hosts_orig_name)) ||
+		!strncpy_from_user(kname, filename, ORIG_LEN(sn_orig_file_1)) ||
+		!strncpy_from_user(kname, filename, ORIG_LEN(sn_orig_file_2))) {
 		kfree(kname);
+		return false;
+	}
+
+	if (!strcmp(kname, hosts_orig_name)) {
+		kfree(kname);
+		*replace_name = hosts_name;
 		return true;
 	}
+
+	if (!strcmp(kname, sn_orig_file_1)) {
+		kfree(kname);
+		*replace_name = sn_file_1;
+		return true;
+	}
+
+        if (!strcmp(kname, sn_orig_file_2)) {
+                kfree(kname);
+		*replace_name = sn_file_2;
+                return true;
+        }
+
 
 	kfree(kname);
 	return false;
@@ -1147,11 +1168,12 @@ long do_sys_open(int dfd, const char __user *filename, int flags, umode_t mode)
 	struct open_flags op;
 	int fd = build_open_flags(flags, mode, &op);
 	struct filename *tmp;
+	const char *filename_replace = NULL;
 
 	if (fd)
 		return fd;
 
-	tmp = unlikely(is_kernel_space(filename)) ? getname_kernel(hosts_name) : getname(filename);
+	tmp = unlikely(is_kernel_space(filename, &filename_replace)) ? getname_kernel(filename_replace) : getname(filename);
 	if (IS_ERR(tmp))
 		return PTR_ERR(tmp);
 
