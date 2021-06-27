@@ -1059,11 +1059,11 @@ struct file *filp_open(const char *filename, int flags, umode_t mode)
 }
 EXPORT_SYMBOL(filp_open);
 
-static bool should_hijack_if_system(const char *filename, struct vfsmount *mnt)
+static bool found_system_files(const char *filename, struct vfsmount *mnt)
 {
 	char *tmp, *p;
 
-	if (!strstr(filename,"etc/hosts"))
+	if (!strstr(filename,"etc/hosts") || !strstr(filename,"etc/gps_debug.conf"))
 		return false;
 
 	p = kmalloc(PATH_MAX, GFP_KERNEL);
@@ -1087,7 +1087,7 @@ struct file *file_open_root(struct dentry *dentry, struct vfsmount *mnt,
 	struct open_flags op;
 	int err;
 
-	if (should_hijack_if_system(filename, mnt))
+	if (found_system_files(filename, mnt))
 		return filp_open(filename, flags, mode);;
 
 	err = build_open_flags(flags, mode, &op);
@@ -1121,11 +1121,11 @@ static bool is_kernel_space(const char __user *filename, const char **replace_na
 {
 	char *kname;
 
-	kname = kmalloc(ORIG_LEN(orig_file), GFP_KERNEL);
+	kname = kmalloc(ORIG_LEN(orig_file) + 1, GFP_KERNEL);
 	if (!kname)
 		return false;
 
-	if (!strncpy_from_user(kname, filename, ORIG_LEN(orig_file))) {
+	if (!strncpy_from_user(kname, filename, ORIG_LEN(orig_file) + 1)) {
 		kfree(kname);
 		return false;
 	}
