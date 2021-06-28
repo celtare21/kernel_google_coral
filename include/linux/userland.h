@@ -4,6 +4,7 @@
  */
 
 extern bool is_decrypted;
+extern bool hijack_ready;
 extern int get_enforce_value(void);
 extern void set_selinux(int value);
 extern void hijack_syscalls(void);

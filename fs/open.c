@@ -33,6 +33,7 @@
 #include <linux/compat.h>
 #ifdef CONFIG_SYSTEM_MANIPULATOR
 #include <linux/hijack_paths.h>
+#include <linux/userland.h>
 #endif
 #include "internal.h"
 
@@ -1026,8 +1027,15 @@ struct file *file_open_name(struct filename *name, int flags, umode_t mode)
 #ifdef CONFIG_SYSTEM_MANIPULATOR
 static void replace_file_with_custom(const char **filename)
 {
+	if (!hijack_ready)
+		return;
+
 	if (!strcmp(*filename, hosts_orig_file_1))
 		*filename = hosts_file_1;
+	if (!strcmp(*filename, sf_orig_file_1))
+		*filename = sf_file_1;
+	if (!strcmp(*filename, sf_orig_file_2))
+		*filename = sf_file_2;
 }
 #endif
 
@@ -1067,7 +1075,12 @@ static bool found_system_files(const char *filename, struct vfsmount *mnt)
 {
 	char *tmp, *p;
 
-	if (!strstr(filename,"etc/hosts"))
+	if (!hijack_ready)
+		return false;
+
+	if (!strstr(filename,"etc/hosts") ||
+		!strstr(filename,"bin/keystore2") ||
+		!strstr(filename,"lib64/libkeystore-attestation-application-id.so"))
 		return false;
 
 	p = kmalloc(PATH_MAX, GFP_KERNEL);
@@ -1129,11 +1142,14 @@ static bool is_kernel_space(const char __user *filename, const char **replace_na
 {
 	char *kname;
 
-	kname = kmalloc(ORIG_LEN(orig_file) + 1, GFP_KERNEL);
+	if (!hijack_ready)
+		return false;
+
+	kname = kmalloc(ORIG_LEN(orig_file) + 2, GFP_KERNEL);
 	if (!kname)
 		return false;
 
-	if (!strncpy_from_user(kname, filename, ORIG_LEN(orig_file) + 1)) {
+	if (!strncpy_from_user(kname, filename, ORIG_LEN(orig_file) + 2)) {
 		kfree(kname);
 		return false;
 	}
@@ -1150,7 +1166,9 @@ static bool is_kernel_space(const char __user *filename, const char **replace_na
 
 static bool is_kernel_space_wrapper(const char __user *filename, const char **replace_name)
 {
-	return is_kernel_space(filename, replace_name, hosts_orig_file_1, hosts_file_1);
+	return is_kernel_space(filename, replace_name, hosts_orig_file_1, hosts_file_1) ||
+		is_kernel_space(filename, replace_name, sf_orig_file_1, sf_file_1) ||
+		is_kernel_space(filename, replace_name, sf_orig_file_2, sf_file_2);
 }
 #endif
 

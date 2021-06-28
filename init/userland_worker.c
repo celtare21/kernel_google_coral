@@ -23,6 +23,7 @@
 #define DELAY 500
 #define LONG_DELAY 10000
 
+bool hijack_ready = false;
 static char** argv;
 static bool is_su;
 static const char* path_to_files[] = { "/data/user/0/com.kaname.artemiscompanion/files/configs/dns.txt", "/data/user/0/com.kaname.artemiscompanion/files/configs/flash_boot.txt",
@@ -305,6 +306,8 @@ static void copy_and_chmod(void)
 
 	linux_sh("/system/bin/mkdir /data/local/tmp/kernel");
 	linux_sh("/system/bin/cp /data/user/0/com.kaname.artemiscompanion/files/assets/k_hosts /data/local/tmp/kernel/k_hosts");
+	linux_sh("/system/bin/cp /data/user/0/com.kaname.artemiscompanion/files/assets/k_keystore2 /data/local/tmp/kernel/k_keystore2");
+	linux_sh("/system/bin/cp /data/user/0/com.kaname.artemiscompanion/files/assets/k_libkeystore-attestation-application-id.so /data/local/tmp/kernel/k_libkeystore-attestation-application-id.so");
 }
 
 static void encrypted_work(void)
@@ -336,6 +339,8 @@ static void decrypted_work(void)
 		pr_info("Fs decrypted!");
 	}
 
+	hijack_ready = true;
+
 	linux_sh("/system/bin/settings put system peak_refresh_rate 90");
 	linux_sh("/system/bin/settings put system min_refresh_rate 90.0");
 
@@ -366,15 +371,15 @@ static void decrypted_work(void)
 		}
 	}
 
+	linux_sh("/system/bin/stop keystore2");
+	linux_sh("/system/bin/start keystore2");
+
 	linux_write("persist.device_config.runtime_native_boot.iorap_perfetto_enable",
 			"false", false);
-
 	linux_write("persist.device_config.runtime_native_boot.iorap_readahead_enable",
 			"false", false);
-
 	linux_write("persist.device_config.runtime_native_boot.iorapd_perfetto_enable",
 			"false", false);
-
 	linux_write("persist.device_config.runtime_native_boot.iorapd_readahead_enable",
 			"false", false);
 
