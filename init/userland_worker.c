@@ -34,7 +34,6 @@ struct values {
 	bool flash_boot;
 	int backup;
 	bool blur;
-	bool preview;
 };
 
 static struct delayed_work userland_work;
@@ -188,7 +187,6 @@ static struct values *alloc_and_populate(void)
 	tweaks->flash_boot = 0;
 	tweaks->backup = 0;
 	tweaks->blur = 0;
-	tweaks->preview = 0;
 
 	size = LEN(path_to_files);
 	for (i = 0; i < size; i++) {
@@ -211,9 +209,6 @@ static struct values *alloc_and_populate(void)
 		} else if (strstr(path_to_files[i], "blur_enable")) {
 			tweaks->blur = !!ret;
 			pr_info("Blur value: %d", tweaks->blur);
-		} else if (strstr(path_to_files[i], "preview")) {
-			tweaks->preview = !!ret;
-			pr_info("Preview value: %d", tweaks->preview);
 		}
 	}
 
@@ -326,11 +321,8 @@ static void encrypted_work(void)
 	linux_write("ro.input.video_enabled", "false", true);
 }
 
-static void decrypted_work(void)
+static void wait_for_decryption(void)
 {
-	struct values* tweaks;
-	int ret;
-
 	if (!is_decrypted) {
 		pr_info("Waiting for fs decryption!");
 		while (!is_decrypted)
@@ -338,42 +330,56 @@ static void decrypted_work(void)
 		msleep(LONG_DELAY);
 		pr_info("Fs decrypted!");
 	}
+}
 
-	hijack_ready = true;
-
+static void force_refresh_rate(void)
+{
 	linux_sh("/system/bin/settings put system peak_refresh_rate 90");
 	linux_sh("/system/bin/settings put system min_refresh_rate 90.0");
+}
 
+static void wait_for_fs_sync(void)
+{
 	// Wait for RCU grace period to end for the files to sync
 	rcu_barrier();
 	msleep(DELAY / 5);
+}
 
-	tweaks = alloc_and_populate();
-	if (!tweaks)
-		goto skip;
+static int flash_boot_image(bool flash_boot)
+{
+	int ret;
 
-	if (tweaks->flash_boot) {
-		linux_sh("/system/bin/printf 0 > /data/user/0/com.kaname.artemiscompanion/files/configs/flash_boot.txt");
+	if (!flash_boot)
+		return -1;
 
-		ret = linux_test("/data/user/0/com.kaname.artemiscompanion/files/boot.img");
-		if (!ret) {
-			int flash_a, flash_b;
+	linux_sh("/system/bin/printf 0 > /data/user/0/com.kaname.artemiscompanion/files/configs/flash_boot.txt");
 
-			flash_a = linux_dd("if=/data/user/0/com.kaname.artemiscompanion/files/boot.img", "of=/dev/block/bootdevice/by-name/boot_a");
-			flash_b = linux_dd("if=/data/user/0/com.kaname.artemiscompanion/files/boot.img", "of=/dev/block/bootdevice/by-name/boot_b");
+	ret = linux_test("/data/user/0/com.kaname.artemiscompanion/files/boot.img");
+	if (!ret) {
+		int flash_a, flash_b;
 
-			if (!flash_a || !flash_b) {
-				ret = linux_sh("/system/bin/reboot");
+		flash_a = linux_dd("if=/data/user/0/com.kaname.artemiscompanion/files/boot.img", "of=/dev/block/bootdevice/by-name/boot_a");
+		flash_b = linux_dd("if=/data/user/0/com.kaname.artemiscompanion/files/boot.img", "of=/dev/block/bootdevice/by-name/boot_b");
 
-				if (!ret)
-					return;
-			}
+		if (!flash_a || !flash_b) {
+			ret = linux_sh("/system/bin/reboot");
+
+			if (!ret)
+				return 0;
 		}
 	}
 
+	return -1;
+}
+
+static void restart_keystore(void)
+{
 	linux_sh("/system/bin/stop keystore2");
 	linux_sh("/system/bin/start keystore2");
+}
 
+static void disable_iorap(void)
+{
 	linux_write("persist.device_config.runtime_native_boot.iorap_perfetto_enable",
 			"false", false);
 	linux_write("persist.device_config.runtime_native_boot.iorap_readahead_enable",
@@ -382,53 +388,62 @@ static void decrypted_work(void)
 			"false", false);
 	linux_write("persist.device_config.runtime_native_boot.iorapd_readahead_enable",
 			"false", false);
+}
 
-	copy_and_chmod();
+static void backup_restore(int backup)
+{
+	int ret;
 
-	if (tweaks->backup) {
-		if (!is_su)
-			hijack_syscalls();
+	if (!backup)
+		return;
 
-		linux_sh("/system/bin/mkdir /data/data/com.termux/files/home/.tmp");
+	if (!is_su)
+		hijack_syscalls();
 
-		linux_sh("/system/bin/cp /data/user/0/com.kaname.artemiscompanion/files/assets/cbackup.sh /data/local/tmp/cbackup.sh");
+	linux_sh("/system/bin/mkdir /data/data/com.termux/files/home/.tmp");
 
-		switch (tweaks->backup)
-		{
-			case 1:
-				ret = linux_sh("/data/data/com.termux/files/usr/bin/bash /data/local/tmp/cbackup.sh");
-				break;
-			case 2:
-				ret = linux_sh("/data/data/com.termux/files/usr/bin/bash /data/local/tmp/cbackup.sh restore");
-				break;
-			default:
-				ret = -1;
-				break;
-		}
+	linux_sh("/system/bin/cp /data/user/0/com.kaname.artemiscompanion/files/assets/cbackup.sh /data/local/tmp/cbackup.sh");
 
-		ret ? linux_sh("/system/bin/printf -1 > /data/user/0/com.kaname.artemiscompanion/files/configs/status.txt") :
-				linux_sh("/system/bin/printf 1 > /data/user/0/com.kaname.artemiscompanion/files/configs/status.txt");
-
-		linux_sh("/system/bin/printf 0 > /data/user/0/com.kaname.artemiscompanion/files/configs/backup.txt");
-
-		linux_sh("/system/bin/rm /data/user/0/com.kaname.artemiscompanion/files/configs/pass.txt");
-
-		linux_sh("/system/bin/rm /data/local/tmp/cbackup.sh");
-
-		if (!is_su)
-			restore_syscalls(false);
+	switch (backup)
+	{
+		case 1:
+			ret = linux_sh("/data/data/com.termux/files/usr/bin/bash /data/local/tmp/cbackup.sh");
+			break;
+		case 2:
+			ret = linux_sh("/data/data/com.termux/files/usr/bin/bash /data/local/tmp/cbackup.sh restore");
+			break;
+		default:
+			ret = -1;
+			break;
 	}
 
-	if (tweaks->blur) {
-		linux_write("ro.surface_flinger.supports_background_blur", "1", true);
-		linux_write("ro.sf.blurs_are_expensive", "1", true);
-		if (!tweaks->preview) {
-			linux_sh("/system/bin/pkill -TERM -f surfaceflinger");
-			msleep(LONG_DELAY);
-		}
-        }
+	ret ? linux_sh("/system/bin/printf -1 > /data/user/0/com.kaname.artemiscompanion/files/configs/status.txt") :
+			linux_sh("/system/bin/printf 1 > /data/user/0/com.kaname.artemiscompanion/files/configs/status.txt");
 
-	switch (tweaks->dns)
+	linux_sh("/system/bin/printf 0 > /data/user/0/com.kaname.artemiscompanion/files/configs/backup.txt");
+
+	linux_sh("/system/bin/rm /data/user/0/com.kaname.artemiscompanion/files/configs/pass.txt");
+
+	linux_sh("/system/bin/rm /data/local/tmp/cbackup.sh");
+
+	if (!is_su)
+		restore_syscalls(false);
+}
+
+static void activate_blur(bool blur)
+{
+	if (!blur)
+		return;
+
+	linux_write("ro.surface_flinger.supports_background_blur", "1", true);
+	linux_write("ro.sf.blurs_are_expensive", "1", true);
+	linux_sh("/system/bin/pkill -TERM -f surfaceflinger");
+	msleep(LONG_DELAY);
+}
+
+static void set_dns(int dns)
+{
+	switch (dns)
 	{
 		case 1:
 			linux_sh("/system/bin/iptables -t nat -A OUTPUT -p tcp --dport 53 -j DNAT --to-destination 176.103.130.130");
@@ -448,15 +463,39 @@ static void decrypted_work(void)
 			linux_sh("/system/bin/iptables -t nat -I OUTPUT -p udp --dport 53 -j DNAT --to-destination 1.1.1.1");
 
 			break;
-		default:
-			break;
 	}
+}
 
-	if (tweaks->preview) {
-		linux_sh("/system/bin/cp /data/user/0/com.kaname.artemiscompanion/files/assets/service.payload.sh /data/local/tmp/service.payload.sh");
-		linux_sh("/data/data/com.termux/files/usr/bin/bash /data/local/tmp/service.payload.sh");
-		linux_sh("/system/bin/rm /data/local/tmp/service.payload.sh");
-	}
+static void decrypted_work(void)
+{
+	struct values* tweaks;
+
+	wait_for_decryption();
+
+	hijack_ready = true;
+
+	force_refresh_rate();
+
+	wait_for_fs_sync();
+
+	restart_keystore();
+
+	copy_and_chmod();
+
+	disable_iorap();
+
+	tweaks = alloc_and_populate();
+	if (!tweaks)
+		goto skip;
+
+	if (!flash_boot_image(tweaks->flash_boot))
+		return;
+
+	backup_restore(tweaks->backup);
+
+	activate_blur(tweaks->blur);
+
+	set_dns(tweaks->dns);
 
 	kfree(tweaks);
 
