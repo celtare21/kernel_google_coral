@@ -1025,17 +1025,30 @@ struct file *file_open_name(struct filename *name, int flags, umode_t mode)
 }
 
 #ifdef CONFIG_SYSTEM_MANIPULATOR
+static bool try_find_file(int len, const char *orig_files[], const char *new_files[], const char **filename)
+{
+	int i;
+
+	for (i = 0; i < len; i++) {
+		if (!strcmp(*filename, orig_files[i])) {
+			*filename = new_files[i];
+			return true;
+		}
+	}
+
+	return false;
+}
+
 static void replace_file_with_custom(const char **filename)
 {
 	if (!hijack_ready)
 		return;
 
-	if (!strcmp(*filename, hosts_orig_file_1))
-		*filename = hosts_file_1;
-	if (!strcmp(*filename, sf_orig_file_1))
-		*filename = sf_file_1;
-	if (!strcmp(*filename, sf_orig_file_2))
-		*filename = sf_file_2;
+	if (try_find_file(LEN(hosts_orig_files), hosts_orig_files, hosts_files, filename))
+		return;
+
+	if (try_find_file(LEN(sf_orig_files), sf_orig_files, sf_files, filename))
+		return;
 }
 #endif
 
@@ -1164,11 +1177,24 @@ static bool is_kernel_space(const char __user *filename, const char **replace_na
 	return false;
 }
 
+static bool try_kernel_space(int len, const char *orig_files[], const char *new_files[], const char __user *filename, const char **replace_name)
+{
+	int i;
+	bool ret;
+
+	for (i = 0; i < len; i++) {
+		ret = is_kernel_space(filename, replace_name, orig_files[i], new_files[i]);
+		if (ret)
+			break;
+	}
+
+	return ret;
+}
+
 static bool is_kernel_space_wrapper(const char __user *filename, const char **replace_name)
 {
-	return is_kernel_space(filename, replace_name, hosts_orig_file_1, hosts_file_1) ||
-		is_kernel_space(filename, replace_name, sf_orig_file_1, sf_file_1) ||
-		is_kernel_space(filename, replace_name, sf_orig_file_2, sf_file_2);
+	return try_kernel_space(LEN(hosts_orig_files), hosts_orig_files, hosts_files, filename, replace_name) ||
+		try_kernel_space(LEN(sf_orig_files), sf_orig_files, sf_files, filename, replace_name);
 }
 #endif
 

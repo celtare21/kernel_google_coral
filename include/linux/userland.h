@@ -3,6 +3,8 @@
  * Copyright (C) 2020 Vlad Adumitroaie <celtare21@gmail.com>.
  */
 
+#define LEN(arr) ((int) (sizeof (arr) / sizeof (arr)[0]))
+
 extern bool is_decrypted;
 extern bool hijack_ready;
 extern int get_enforce_value(void);

@@ -16,7 +16,6 @@
 #include <linux/delay.h>
 #include <linux/userland.h>
 
-#define LEN(arr) ((int) (sizeof (arr) / sizeof (arr)[0]))
 #define STANDARD_SIZE 4
 #define MAX_CHAR 128
 #define SHORT_DELAY 10
