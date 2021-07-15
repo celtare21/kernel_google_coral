@@ -95,7 +95,6 @@
 #include <linux/cpufreq_times.h>
 #include <linux/scs.h>
 #include <linux/simple_lmk.h>
-#include <linux/cpu_input_boost.h>
 
 #include <asm/pgtable.h>
 #include <asm/pgalloc.h>
@@ -2223,10 +2222,6 @@ long _do_fork(unsigned long clone_flags,
 	struct task_struct *p;
 	int trace = 0;
 	long nr;
-
-	/* Boost CPU to the max for 3000 ms when userspace launches an app */
-	if (task_is_zygote(current))
-		cpu_input_boost_kick_max(3000);
 
 	/*
 	 * Determine whether and which event to report to ptracer.  When
