@@ -1815,29 +1815,6 @@ static void _sde_crtc_program_lm_output_roi(struct drm_crtc *crtc)
 	}
 }
 
-/**
- * _sde_crtc_calc_inline_prefill - calculate rotator start prefill
- * @crtc: Pointer to drm crtc
- * return: prefill time in lines
- */
-static u32 _sde_crtc_calc_inline_prefill(struct drm_crtc *crtc)
-{
-	struct sde_kms *sde_kms;
-
-	if (!crtc) {
-		SDE_ERROR("invalid parameters\n");
-		return 0;
-	}
-
-	sde_kms = _sde_crtc_get_kms(crtc);
-	if (!sde_kms || !sde_kms->catalog) {
-		SDE_ERROR("invalid kms\n");
-		return 0;
-	}
-
-	return sde_kms->catalog->sbuf_prefill + sde_kms->catalog->sbuf_headroom;
-}
-
 uint64_t sde_crtc_get_sbuf_clk(struct drm_crtc_state *state)
 {
 	struct sde_crtc_state *cstate;
@@ -2057,7 +2034,6 @@ static void _sde_crtc_blend_setup_mixer(struct drm_crtc *crtc,
 	struct sde_hw_mixer *lm;
 	struct sde_hw_stage_cfg *stage_cfg;
 	struct sde_rect plane_crtc_roi;
-	uint32_t prefill;
 	uint32_t stage_idx, lm_idx;
 	int zpos_cnt[SDE_STAGE_MAX + 1] = { 0 };
 	int i, rot_id = 0, cnt = 0;
