@@ -2073,7 +2073,6 @@ static void _sde_crtc_blend_setup_mixer(struct drm_crtc *crtc,
 	stage_cfg = &sde_crtc->stage_cfg;
 	cstate = to_sde_crtc_state(crtc->state);
 
-	cstate->sbuf_prefill_line = _sde_crtc_calc_inline_prefill(crtc);
 	sde_crtc->sbuf_rot_id_old = sde_crtc->sbuf_rot_id;
 	sde_crtc->sbuf_rot_id = 0x0;
 	sde_crtc->sbuf_rot_id_delta = 0x0;
@@ -2090,11 +2089,6 @@ static void _sde_crtc_blend_setup_mixer(struct drm_crtc *crtc,
 
 		pstate = to_sde_plane_state(state);
 		fb = state->fb;
-
-		/* assume all rotated planes report the same prefill amount */
-		prefill = sde_plane_rot_get_prefill(plane);
-		if (prefill)
-			cstate->sbuf_prefill_line = prefill;
 
 		sde_plane_ctl_flush(plane, ctl, true);
 		rot_id = sde_plane_get_sbuf_id(plane);
