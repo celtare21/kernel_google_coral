@@ -8574,8 +8574,6 @@ err_mutex:
 	return ret;
 }
 
-static SIMPLE_DEV_PM_OPS(cs40l2x_pm_ops, cs40l2x_suspend, cs40l2x_resume);
-
 static const struct of_device_id cs40l2x_of_match[] = {
 	{ .compatible = "cirrus,cs40l20" },
 	{ .compatible = "cirrus,cs40l25" },
@@ -8600,7 +8598,6 @@ static struct i2c_driver cs40l2x_i2c_driver = {
 	.driver = {
 		.name = "cs40l2x",
 		.of_match_table = cs40l2x_of_match,
-		.pm = &cs40l2x_pm_ops,
 	},
 	.id_table = cs40l2x_id,
 	.probe = cs40l2x_i2c_probe,
