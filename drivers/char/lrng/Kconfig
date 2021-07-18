@@ -324,6 +324,14 @@ config LRNG_KCAPI
 	  provided by the selected kernel crypto API RNG.
 endif # LRNG_DRNG_SWITCH
 
+config LRNG_RUNTIME_MAX_WO_RESEED_CONFIG
+	bool "Enable runtime configuration of max reseed threshold"
+	help
+	  When enabling this option, the LRNG provides an interface
+	  allowing the setting of the maximum number of DRNG generate
+	  operations without a reseed that has full entropy. The
+	  interface is lrng_drng.max_wo_reseed.
+
 menuconfig LRNG_TESTING_MENU
 	bool "LRNG testing interfaces"
 	depends on DEBUG_FS
