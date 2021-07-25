@@ -22,7 +22,6 @@
  */
 #ifndef _WMI_UNIFIED_PRIV_H_
 #define _WMI_UNIFIED_PRIV_H_
-#endif
 #include <osdep.h>
 #include "wmi_unified_api.h"
 #include "wmi_unified_param.h"
