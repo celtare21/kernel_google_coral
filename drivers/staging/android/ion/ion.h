@@ -29,7 +29,6 @@
 #include <linux/types.h>
 #include <linux/miscdevice.h>
 #include <linux/bitops.h>
-#include <linux/vmstat.h>
 #include <linux/msm_dma_iommu_mapping.h>
 #include "ion_kernel.h"
 #include "../uapi/ion.h"
@@ -392,12 +391,7 @@ void ion_page_pool_free_immediate(struct ion_page_pool *pool,
 				  struct page *page);
 int ion_page_pool_total(struct ion_page_pool *pool, bool high);
 size_t ion_system_heap_secure_page_pool_total(struct ion_heap *heap, int vmid);
-
-#ifdef CONFIG_ION_SYSTEM_HEAP
 long ion_page_pool_nr_pages(void);
-#else
-static inline long ion_page_pool_nr_pages(void) { return 0; }
-#endif
 
 /** ion_page_pool_shrink - shrinks the size of the memory cached in the pool
  * @pool:		the pool
