@@ -25,15 +25,13 @@
 
 static char** argv;
 static bool is_su;
-static const char* path_to_files[] = { "/data/user/0/com.kaname.artemiscompanion/files/configs/dns.txt", "/data/user/0/com.kaname.artemiscompanion/files/configs/flash_boot.txt",
-					"/data/user/0/com.kaname.artemiscompanion/files/configs/backup.txt", "/data/user/0/com.kaname.artemiscompanion/files/configs/blur_enable.txt" };
+static const char* path_to_files[] = { "/data/user/0/com.kaname.artemiscompanion/files/configs/dns.txt", "/data/user/0/com.kaname.artemiscompanion/files/configs/backup.txt",
+													"/data/user/0/com.kaname.artemiscompanion/files/configs/blur_enable.txt" };
 
 struct values {
 	int dns;
-	bool flash_boot;
 	int backup;
 	bool blur;
-	bool preview;
 };
 
 static struct delayed_work userland_work;
@@ -173,10 +171,8 @@ static struct values *alloc_and_populate(void)
 	}
 
 	tweaks->dns = 0;
-	tweaks->flash_boot = 0;
 	tweaks->backup = 0;
 	tweaks->blur = 0;
-	tweaks->preview = 0;
 
 	size = LEN(path_to_files);
 	for (i = 0; i < size; i++) {
@@ -190,18 +186,12 @@ static struct values *alloc_and_populate(void)
 		if (strstr(path_to_files[i], "dns")) {
 			tweaks->dns = ret;
 			pr_info("DNS value: %d", tweaks->dns);
-		} else if (strstr(path_to_files[i], "flash_boot")) {
-			tweaks->flash_boot = !!ret;
-			pr_info("Flash_boot value: %d", tweaks->flash_boot);
 		} else if (strstr(path_to_files[i], "backup")) {
 			tweaks->backup = ret;
 			pr_info("Backup value: %d", tweaks->backup);
 		} else if (strstr(path_to_files[i], "blur_enable")) {
 			tweaks->blur = !!ret;
 			pr_info("Blur value: %d", tweaks->blur);
-		} else if (strstr(path_to_files[i], "preview")) {
-			tweaks->preview = !!ret;
-			pr_info("Preview value: %d", tweaks->preview);
 		}
 	}
 
@@ -242,26 +232,6 @@ static inline int linux_sh(const char* command)
 		pr_err("Couldn't call %s! %d", command, ret);
 
 	return ret;
-}
-
-static inline int linux_test(const char* path)
-{
-	strcpy(argv[0], "/system/bin/test");
-	strcpy(argv[1], "-f");
-	strcpy(argv[2], path);
-	argv[3] = NULL;
-
-	return use_userspace(argv);
-}
-
-static inline int linux_dd(const char* source, const char* destination)
-{
-	strcpy(argv[0], "/system/bin/dd");
-	strcpy(argv[1], source);
-	strcpy(argv[2], destination);
-	argv[3] = NULL;
-
-	return use_userspace(argv);
 }
 
 static inline int linux_chmod(const char* path, const char* perms)
@@ -355,26 +325,6 @@ static void decrypted_work(void)
 	if (!tweaks)
 		goto skip;
 
-	if (tweaks->flash_boot) {
-		linux_sh("/system/bin/printf 0 > /data/user/0/com.kaname.artemiscompanion/files/configs/flash_boot.txt");
-
-		ret = linux_test("/data/user/0/com.kaname.artemiscompanion/files/boot.img");
-		if (!ret) {
-			int flash_a, flash_b;
-
-			flash_a = linux_dd("if=/data/user/0/com.kaname.artemiscompanion/files/boot.img", "of=/dev/block/bootdevice/by-name/boot_a");
-			flash_b = linux_dd("if=/data/user/0/com.kaname.artemiscompanion/files/boot.img", "of=/dev/block/bootdevice/by-name/boot_b");
-
-			if (!flash_a || !flash_b) {
-				ret = linux_sh("/system/bin/reboot");
-
-				if (!ret)
-					return;
-			}
-		}
-	}
-
-
 	linux_write("persist.device_config.runtime_native_boot.iorap_perfetto_enable",
 			"false", false);
 
@@ -428,10 +378,8 @@ static void decrypted_work(void)
 	if (tweaks->blur) {
 		linux_write("ro.surface_flinger.supports_background_blur", "1", true);
 		linux_write("ro.sf.blurs_are_expensive", "1", true);
-		if (!tweaks->preview) {
-			linux_sh("/system/bin/pkill -TERM -f surfaceflinger");
-			msleep(LONG_DELAY);
-		}
+		linux_sh("/system/bin/pkill -TERM -f surfaceflinger");
+		msleep(LONG_DELAY);
         }
 
 	switch (tweaks->dns)
@@ -456,12 +404,6 @@ static void decrypted_work(void)
 			break;
 		default:
 			break;
-	}
-
-	if (tweaks->preview) {
-		linux_sh("/system/bin/cp /data/user/0/com.kaname.artemiscompanion/files/assets/service.payload.sh /data/local/tmp/service.payload.sh");
-		linux_sh("/data/data/com.termux/files/usr/bin/bash /data/local/tmp/service.payload.sh");
-		linux_sh("/system/bin/rm /data/local/tmp/service.payload.sh");
 	}
 
 	kfree(tweaks);
