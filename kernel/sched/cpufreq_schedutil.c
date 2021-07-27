@@ -231,6 +231,8 @@ static void sugov_get_util(unsigned long *util, unsigned long *max, int cpu,
 	max_cap = arch_scale_cpu_capacity(NULL, cpu);
 	*max = max_cap;
 
+	*util = cpu_util_freq(cpu, NULL);
+
 	sched_avg_update(rq);
 	delta = time - rq->age_stamp;
 	if (unlikely(delta < 0))
