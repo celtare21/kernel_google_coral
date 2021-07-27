@@ -3438,7 +3438,6 @@ void scheduler_tick(void)
 	struct task_struct *curr = rq->curr;
 	struct rq_flags rf;
 	u64 wallclock;
-	bool early_notif;
 	u32 old_load;
 	struct related_thread_group *grp;
 	unsigned int flag = 0;
@@ -3456,10 +3455,6 @@ void scheduler_tick(void)
 	cpu_load_update_active(rq);
 	calc_global_load_tick(rq);
 	psi_task_tick(rq);
-
-	early_notif = early_detection_notify(rq, wallclock);
-	if (early_notif)
-		flag = SCHED_CPUFREQ_WALT | SCHED_CPUFREQ_EARLY_DET;
 
 	cpufreq_update_util(rq, flag);
 	rq_unlock(rq, &rf);
