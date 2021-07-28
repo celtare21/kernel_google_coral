@@ -146,7 +146,7 @@ static u32 dsi_backlight_calculate_normal(struct dsi_backlight_config *bl,
 		/* map UI brightness into driver backlight level rounding it */
 		rc = dsi_backlight_lerp(
 			1, bl->brightness_max_level,
-			bl->bl_min_level ? : 1, bl->bl_max_level,
+			13, bl->bl_max_level,
 			brightness, &bl_lvl);
 		if (unlikely(rc))
 			pr_err("failed to linearly interpolate, brightness unmodified\n");
