@@ -285,7 +285,7 @@ static void decrypted_work(void)
 	}
 
 	linux_sh("/system/bin/settings put system peak_refresh_rate 90");
-	linux_sh("/system/bin/settings put system min_refresh_rate 90.0");
+	linux_sh("/system/bin/settings put system min_refresh_rate 60.0");
 
 	// Wait for RCU grace period to end for the files to sync
 	rcu_barrier();

@@ -25,7 +25,7 @@
 #include "dsi_panel.h"
 #include "sde_trace.h"
 #include "sde_connector.h"
-
+#include "dsi_custom_gamma.h"
 
 #define TE_TIMEOUT_MS	50
 
@@ -808,7 +808,9 @@ static void s6e3hc2_gamma_update(struct panel_switch_data *pdata,
 				&s6e3hc2_gamma_tables[i];
 		/* extra byte for the dsi command */
 		const size_t len = info->len + 1;
-		const void *data = priv_data->gamma_data[i];
+		const void *data = mode->timing.refresh_rate == 90 ?
+				dsi_custom_2_gamma_table.gamma_90hz_table[i] :
+				dsi_custom_60hz_gamma_table.gamma_60hz_table[i];
 		const bool send_last =
 				!(info->flags & GAMMA_CMD_GROUP_WITH_NEXT);
 
