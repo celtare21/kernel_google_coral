@@ -2302,12 +2302,8 @@ int ufs_qcom_testbus_config(struct ufs_qcom_host *host)
 	/*
 	 * No need for a default case, since
 	 * ufs_qcom_testbus_cfg_is_ok() checks that the configuration
-	 * is legal; however, add it anyway to satisfy the compiler.
+	 * is legal
 	 */
-	default:
-		reg = 0;
-		offset = 0;
-		break;
 	}
 
 	if (offset < 0) {
