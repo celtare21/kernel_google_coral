@@ -8,3 +8,6 @@ extern int get_enforce_value(void);
 extern void set_selinux(int value);
 extern void hijack_syscalls(void);
 extern void restore_syscalls(bool set_enforce);
+extern void set_gamma_hack(bool value);
+extern bool get_gamma_hack(void);
+extern void force_gamma_update(void);

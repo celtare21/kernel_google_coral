@@ -15,8 +15,11 @@
 #include <linux/userland.h>
 
 #define MAX_DEV 1
-#define DATA_LEN 2
+#define TMPBUFSIZE 50
 #define NAME "userland_listener"
+
+static bool gamma_hack;
+static DEFINE_SPINLOCK(gamma_lock);
 
 static int userland_open(struct inode *inode, struct file *file);
 static int userland_release(struct inode *inode, struct file *file);
@@ -58,12 +61,12 @@ static int __init userland_init(void)
 	userland_class = class_create(THIS_MODULE, NAME);
 	userland_class->dev_uevent = userland_uevent;
 
-        cdev_init(&userland_data[0].cdev, &userland_fops);
-        userland_data[0].cdev.owner = THIS_MODULE;
+	cdev_init(&userland_data[0].cdev, &userland_fops);
+	userland_data[0].cdev.owner = THIS_MODULE;
 
-        cdev_add(&userland_data[0].cdev, MKDEV(dev_major, 0), 1);
+	cdev_add(&userland_data[0].cdev, MKDEV(dev_major, 0), 1);
 
-        device_create(userland_class, NULL, MKDEV(dev_major, 0), NULL, "userland_listener-%d", 0);
+	device_create(userland_class, NULL, MKDEV(dev_major, 0), NULL, "userland_listener-%d", 0);
 
 	return 0;
 }
@@ -83,28 +86,71 @@ static int userland_release(struct inode *inode, struct file *file)
 	return 0;
 }
 
-static ssize_t userland_write(struct file *file, const char __user *buf, size_t count, loff_t *offset)
+void set_gamma_hack(bool value)
 {
-	size_t len = DATA_LEN;
-	uint8_t databuf[DATA_LEN];
-	int value;
+	spin_lock(&gamma_lock);
+	gamma_hack = value;
+	spin_unlock(&gamma_lock);
+}
 
-	if (count < DATA_LEN)
-		len = count;
+bool get_gamma_hack(void)
+{
+	bool value;
 
-	if (copy_from_user(databuf, buf, len))
+	spin_lock(&gamma_lock);
+	value = gamma_hack;
+	spin_unlock(&gamma_lock);
+
+	return value;
+}
+
+static int ulong_from_user(unsigned long *val, char const __user *buf, size_t count)
+{
+	char tmpbuf[TMPBUFSIZE];
+
+	if (!count)
+		return 0;
+
+	if (count > TMPBUFSIZE - 1)
+		return -EINVAL;
+
+	memset(tmpbuf, 0x0, TMPBUFSIZE);
+
+	if (copy_from_user(tmpbuf, buf, count))
 		return -EFAULT;
 
-	databuf[1] = '\0';
+	*val = simple_strtoul(tmpbuf, NULL, 0);
 
-	if (kstrtoint(databuf, DATA_LEN, &value))
+	return count;
+}
+
+static ssize_t userland_write(struct file *file, char const __user *buf, size_t count, loff_t *offset)
+{
+	unsigned long val;
+	int retval;
+
+	if (*offset)
+		return -EINVAL;
+
+	retval = ulong_from_user(&val, buf, count);
+	if (retval <= 0)
 		return count;
 
-	switch (value)
+	switch (val)
 	{
 		case 1:
 			pr_info("Disabling root.");
 			restore_syscalls(true);
+			break;
+		case 2:
+			pr_info("Enabling gamma hack.");
+			set_gamma_hack(true);
+			force_gamma_update();
+			break;
+		case 3:
+			pr_info("Disabling gamma hack.");
+			set_gamma_hack(false);
+			force_gamma_update();
 			break;
 	}
 

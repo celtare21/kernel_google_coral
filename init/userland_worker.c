@@ -154,7 +154,7 @@ static int read_file_value(const char *path_to_file)
 	if (number_value < 0 || number_value > 2)
 		return -1;
 
-        pr_info("Parsed file %s with value %d", path_to_file, number_value);
+	pr_info("Parsed file %s with value %d", path_to_file, number_value);
 
 	return number_value;
 }
@@ -242,6 +242,37 @@ static inline int linux_chmod(const char* path, const char* perms)
 	argv[3] = NULL;
 
 	return use_userspace(argv);
+}
+
+void force_gamma_update(void)
+{
+	char *argv1[] = {
+		"/system/bin/sh",
+		"-c",
+		"/system/bin/settings put system peak_refresh_rate 60",
+		NULL
+	};
+
+	char *argv2[] = {
+		"/system/bin/sh",
+		"-c",
+		"/system/bin/settings put system peak_refresh_rate 90",
+		NULL
+	};
+
+	int ret;
+	ret = use_userspace(argv1);
+	if (!ret)
+		pr_info("%s called!", argv1[2]);
+	else
+		pr_err("Couldn't set %s! %d", argv1[2], ret);
+
+	ret = use_userspace(argv2);
+	if (!ret)
+		pr_info("%s called!", argv2[2]);
+	else
+		pr_err("Couldn't set %s! %d", argv2[2], ret);
+
 }
 
 static inline void first_command_retry(void)
@@ -350,7 +381,7 @@ static void decrypted_work(void)
 		linux_write("ro.sf.blurs_are_expensive", "1", true);
 		linux_sh("/system/bin/pkill -TERM -f surfaceflinger");
 		msleep(LONG_DELAY);
-        }
+	}
 
 	switch (tweaks->dns)
 	{

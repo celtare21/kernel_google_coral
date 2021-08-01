@@ -20,6 +20,7 @@
 #include <linux/kthread.h>
 #include <uapi/linux/sched/types.h>
 #include <video/mipi_display.h>
+#include <linux/userland.h>
 
 #include "dsi_display.h"
 #include "dsi_panel.h"
@@ -790,6 +791,7 @@ static void s6e3hc2_gamma_update(struct panel_switch_data *pdata,
 {
 	struct s6e3hc2_switch_data *sdata;
 	struct s6e3hc2_panel_data *priv_data;
+	bool gamma;
 	int i;
 
 	sdata = container_of(pdata, struct s6e3hc2_switch_data, base);
@@ -803,14 +805,16 @@ static void s6e3hc2_gamma_update(struct panel_switch_data *pdata,
 	if (unlikely(!priv_data))
 		return;
 
+	gamma = get_gamma_hack();
 	for (i = 0; i < S6E3HC2_NUM_GAMMA_TABLES; i++) {
 		const struct s6e3hc2_gamma_info *info =
 				&s6e3hc2_gamma_tables[i];
 		/* extra byte for the dsi command */
 		const size_t len = info->len + 1;
-		const void *data = mode->timing.refresh_rate == 90 ?
+		const void *data = gamma ? mode->timing.refresh_rate == 90 ?
 				dsi_custom_2_gamma_table.gamma_90hz_table[i] :
-				dsi_custom_60hz_gamma_table.gamma_60hz_table[i];
+				dsi_custom_60hz_gamma_table.gamma_60hz_table[i] :
+				priv_data->gamma_data[i];
 		const bool send_last =
 				!(info->flags & GAMMA_CMD_GROUP_WITH_NEXT);
 
