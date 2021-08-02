@@ -257,12 +257,12 @@ static unsigned int lrng_chacha20_drng_selftest(void)
 
 	BUILD_BUG_ON(sizeof(seed) % sizeof(u32));
 
-	memset(&chacha20, 0, sizeof(chacha20));
-	lrng_cc20_init_rfc7539(&chacha20);
+	memset(&chacha20_lrng, 0, sizeof(chacha20_lrng));
+	lrng_cc20_init_rfc7539(&chacha20_lrng);
 	lrng_selftest_bswap32((u32 *)seed, sizeof(seed) / sizeof(u32));
 
 	/* Generate with zero state */
-	ret = crypto_cb->lrng_drng_generate_helper(&chacha20, outbuf,
+	ret = crypto_cb->lrng_drng_generate_helper(&chacha20_lrng, outbuf,
 						   sizeof(expected_halfblock));
 	if (ret != sizeof(expected_halfblock))
 		goto err;
@@ -270,14 +270,14 @@ static unsigned int lrng_chacha20_drng_selftest(void)
 		goto err;
 
 	/* Clear state of DRNG */
-	memset(&chacha20.key.u[0], 0, 48);
+	memset(&chacha20_lrng.key.u[0], 0, 48);
 
 	/* Reseed with 2 key blocks */
-	ret = crypto_cb->lrng_drng_seed_helper(&chacha20, seed,
+	ret = crypto_cb->lrng_drng_seed_helper(&chacha20_lrng, seed,
 					       sizeof(expected_oneblock));
 	if (ret < 0)
 		goto err;
-	ret = crypto_cb->lrng_drng_generate_helper(&chacha20, outbuf,
+	ret = crypto_cb->lrng_drng_generate_helper(&chacha20_lrng, outbuf,
 						   sizeof(expected_oneblock));
 	if (ret != sizeof(expected_oneblock))
 		goto err;
@@ -285,14 +285,14 @@ static unsigned int lrng_chacha20_drng_selftest(void)
 		goto err;
 
 	/* Clear state of DRNG */
-	memset(&chacha20.key.u[0], 0, 48);
+	memset(&chacha20_lrng.key.u[0], 0, 48);
 
 	/* Reseed with 1 key block and one byte */
-	ret = crypto_cb->lrng_drng_seed_helper(&chacha20, seed,
+	ret = crypto_cb->lrng_drng_seed_helper(&chacha20_lrng, seed,
 					sizeof(expected_block_nonalinged));
 	if (ret < 0)
 		goto err;
-	ret = crypto_cb->lrng_drng_generate_helper(&chacha20, outbuf,
+	ret = crypto_cb->lrng_drng_generate_helper(&chacha20_lrng, outbuf,
 					sizeof(expected_block_nonalinged));
 	if (ret != sizeof(expected_block_nonalinged))
 		goto err;

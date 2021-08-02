@@ -5,10 +5,7 @@
  * Copyright (C) 2016 - 2021, Stephan Mueller <smueller@chronox.de>
  */
 
-#include <crypto/chacha20.h>
-
-#define CHACHA_BLOCK_SIZE	CHACHA20_BLOCK_SIZE
-#define CHACHA_KEY_SIZE		CHACHA20_KEY_SIZE
+#include <crypto/chacha.h>
 
 /* State according to RFC 7539 section 2.3 */
 struct chacha20_block {
@@ -22,11 +19,11 @@ struct chacha20_block {
 	u32 nonce[3];
 };
 
-static inline void lrng_cc20_init_rfc7539(struct chacha20_block *chacha20)
+static inline void lrng_cc20_init_rfc7539(struct chacha20_block *chacha20v)
 {
 	/* String "expand 32-byte k" */
-	chacha20->constants[0] = 0x61707865;
-	chacha20->constants[1] = 0x3320646e;
-	chacha20->constants[2] = 0x79622d32;
-	chacha20->constants[3] = 0x6b206574;
+	chacha20v->constants[0] = 0x61707865;
+	chacha20v->constants[1] = 0x3320646e;
+	chacha20v->constants[2] = 0x79622d32;
+	chacha20v->constants[3] = 0x6b206574;
 }

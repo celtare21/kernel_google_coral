@@ -12,6 +12,7 @@
 #include <crypto/hash.h>
 #include <linux/lrng.h>
 #include <linux/random.h>
+#include <linux/ratelimit.h>
 
 #include "lrng_internal.h"
 #include "lrng_es_irq.h"

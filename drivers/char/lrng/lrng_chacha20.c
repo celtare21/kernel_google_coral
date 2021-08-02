@@ -8,7 +8,7 @@
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
-#include <crypto/chacha20.h>
+#include <crypto/chacha.h>
 #include <linux/lrng.h>
 #include <linux/random.h>
 #include <linux/slab.h>
@@ -29,7 +29,7 @@ struct chacha20_state {
  * kmalloc too early in the boot cycle. For subsequent allocation requests,
  * such as per-NUMA-node DRNG instances, kmalloc will be used.
  */
-struct chacha20_state chacha20 __latent_entropy;
+struct chacha20_state chacha20_lrng __latent_entropy;
 
 /**
  * Update of the ChaCha20 state by either using an unused buffer part or by
@@ -49,7 +49,7 @@ static void lrng_chacha20_update(struct chacha20_state *chacha20_state,
 	BUILD_BUG_ON(CHACHA_BLOCK_SIZE != 2 * CHACHA_KEY_SIZE);
 
 	if (used_words > CHACHA_KEY_SIZE_WORDS) {
-		chacha20_block(&chacha20->constants[0], tmp);
+		chacha20_block(&chacha20->constants[0], (u8 *)tmp);
 		for (i = 0; i < CHACHA_KEY_SIZE_WORDS; i++)
 			chacha20->key.u[i] ^= le32_to_cpu(tmp[i]);
 		memzero_explicit(tmp, sizeof(tmp));
@@ -119,13 +119,13 @@ static int lrng_cc20_drng_generate_helper(void *drng, u8 *outbuf, u32 outbuflen)
 	int zeroize_buf = 0;
 
 	while (outbuflen >= CHACHA_BLOCK_SIZE) {
-		chacha20_block(&chacha20->constants[0], (u32 *)outbuf);
+		chacha20_block(&chacha20->constants[0], outbuf);
 		outbuf += CHACHA_BLOCK_SIZE;
 		outbuflen -= CHACHA_BLOCK_SIZE;
 	}
 
 	if (outbuflen) {
-		chacha20_block(&chacha20->constants[0], aligned_buf);
+		chacha20_block(&chacha20->constants[0], (u8 *)aligned_buf);
 		memcpy(outbuf, aligned_buf, outbuflen);
 		used = ((outbuflen + sizeof(aligned_buf[0]) - 1) /
 			sizeof(aligned_buf[0]));
@@ -175,7 +175,7 @@ static void lrng_cc20_drng_dealloc(void *drng)
 {
 	struct chacha20_state *chacha20_state = (struct chacha20_state *)drng;
 
-	if (drng == &chacha20) {
+	if (drng == &chacha20_lrng) {
 		memzero_explicit(chacha20_state, sizeof(*chacha20_state));
 		pr_debug("static ChaCha20 core zeroized\n");
 		return;

@@ -82,7 +82,7 @@
 #ifdef CONFIG_CRYPTO_LIB_SHA256
 # define LRNG_ATOMIC_DIGEST_SIZE	SHA256_DIGEST_SIZE
 #else
-# define LRNG_ATOMIC_DIGEST_SIZE	SHA1_DIGEST_SIZE
+# define LRNG_ATOMIC_DIGEST_SIZE	32
 #endif
 #define LRNG_WRITE_WAKEUP_ENTROPY	LRNG_ATOMIC_DIGEST_SIZE
 
@@ -121,7 +121,7 @@
 
 /************************ Default DRNG implementation *************************/
 
-extern struct chacha20_state chacha20;
+extern struct chacha20_state chacha20_lrng;
 extern const struct lrng_crypto_cb lrng_cc20_crypto_cb;
 void lrng_cc20_init_state(struct chacha20_state *state);
 
