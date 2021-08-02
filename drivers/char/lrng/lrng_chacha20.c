@@ -8,7 +8,7 @@
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
-#include <crypto/chacha.h>
+#include <crypto/chacha20.h>
 #include <linux/lrng.h>
 #include <linux/random.h>
 #include <linux/slab.h>
@@ -49,7 +49,7 @@ static void lrng_chacha20_update(struct chacha20_state *chacha20_state,
 	BUILD_BUG_ON(CHACHA_BLOCK_SIZE != 2 * CHACHA_KEY_SIZE);
 
 	if (used_words > CHACHA_KEY_SIZE_WORDS) {
-		chacha20_block(&chacha20->constants[0], (u8 *)tmp);
+		chacha20_block(&chacha20->constants[0], tmp);
 		for (i = 0; i < CHACHA_KEY_SIZE_WORDS; i++)
 			chacha20->key.u[i] ^= le32_to_cpu(tmp[i]);
 		memzero_explicit(tmp, sizeof(tmp));
@@ -119,13 +119,13 @@ static int lrng_cc20_drng_generate_helper(void *drng, u8 *outbuf, u32 outbuflen)
 	int zeroize_buf = 0;
 
 	while (outbuflen >= CHACHA_BLOCK_SIZE) {
-		chacha20_block(&chacha20->constants[0], outbuf);
+		chacha20_block(&chacha20->constants[0], (u32 *)outbuf);
 		outbuf += CHACHA_BLOCK_SIZE;
 		outbuflen -= CHACHA_BLOCK_SIZE;
 	}
 
 	if (outbuflen) {
-		chacha20_block(&chacha20->constants[0], (u8 *)aligned_buf);
+		chacha20_block(&chacha20->constants[0], aligned_buf);
 		memcpy(outbuf, aligned_buf, outbuflen);
 		used = ((outbuflen + sizeof(aligned_buf[0]) - 1) /
 			sizeof(aligned_buf[0]));
@@ -182,14 +182,14 @@ static void lrng_cc20_drng_dealloc(void *drng)
 	}
 
 	pr_debug("ChaCha20 core zeroized and freed\n");
-	kfree_sensitive(chacha20_state);
+	kzfree(chacha20_state);
 }
 
 /******************************* Hash Operation *******************************/
 
 #ifdef CONFIG_CRYPTO_LIB_SHA256
 
-#include <crypto/sha2.h>
+#include <crypto/sha.h>
 
 static u32 lrng_cc20_hash_digestsize(void *hash)
 {
@@ -231,7 +231,7 @@ static void lrng_cc20_hash_desc_zero(struct shash_desc *shash)
 
 #else /* CONFIG_CRYPTO_LIB_SHA256 */
 
-#include <crypto/sha1.h>
+#include <crypto/sha.h>
 #include <crypto/sha1_base.h>
 
 /*
@@ -249,7 +249,7 @@ static void lrng_sha1_block_fn(struct sha1_state *sctx, const u8 *src,
 	u32 temp[SHA1_WORKSPACE_WORDS];
 
 	while (blocks--) {
-		sha1_transform(sctx->state, src, temp);
+		sha_transform(sctx->state, src, temp);
 		src += SHA1_BLOCK_SIZE;
 	}
 	memzero_explicit(temp, sizeof(temp));

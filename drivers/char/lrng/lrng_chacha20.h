@@ -5,7 +5,10 @@
  * Copyright (C) 2016 - 2021, Stephan Mueller <smueller@chronox.de>
  */
 
-#include <crypto/chacha.h>
+#include <crypto/chacha20.h>
+
+#define CHACHA_BLOCK_SIZE	CHACHA20_BLOCK_SIZE
+#define CHACHA_KEY_SIZE		CHACHA20_KEY_SIZE
 
 /* State according to RFC 7539 section 2.3 */
 struct chacha20_block {
