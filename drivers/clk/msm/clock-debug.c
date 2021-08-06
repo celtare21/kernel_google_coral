@@ -651,7 +651,7 @@ static int clock_debug_init(void)
 	if (!debugfs_base)
 		return -ENOMEM;
 
-	if (!debugfs_create_u32("debug_suspend", 0644,
+	if (!debugfs_create_u32("debug_suspend", 0444,
 				debugfs_base, &debug_suspend)) {
 		debugfs_remove_recursive(debugfs_base);
 		return -ENOMEM;
