@@ -545,7 +545,7 @@ enum {
 #define DEFAULT_RETRY_IO_COUNT	8	/* maximum retry read IO count */
 
 /* congestion wait timeout value, default: 10ms */
-#define	DEFAULT_IO_TIMEOUT	(msecs_to_jiffies(1))
+#define	DEFAULT_IO_TIMEOUT	(msecs_to_jiffies(10))
 
 /* maximum retry quota flush count */
 #define DEFAULT_RETRY_QUOTA_FLUSH_COUNT		8
