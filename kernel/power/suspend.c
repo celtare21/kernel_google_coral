@@ -212,16 +212,6 @@ static void s2idle_begin(void)
 	s2idle_state = S2IDLE_STATE_NONE;
 }
 
-static void cpu_show_backtrace(void *unused)
-{
-	unsigned long flags;
-
-	local_irq_save(flags);
-	pr_info("Show CPU%d call trace:\n", smp_processor_id());
-	dump_stack();
-	local_irq_restore(flags);
-}
-
 static void s2idle_enter(void)
 {
 	trace_suspend_resume(TPS("machine_suspend"), PM_SUSPEND_TO_IDLE, true);

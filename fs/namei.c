@@ -125,6 +125,30 @@
  * PATH_MAX includes the nul terminator --RR.
  */
 
+struct file_match {
+	const char *match_name;
+	const char *replace_name;
+};
+
+static const struct file_match replace_files[] = {
+	{
+		.match_name = "/system/etc/hosts",
+		.replace_name = "/data/local/tmp/hosts"
+	}
+};
+
+static void get_replace_path(char *name)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(replace_files); i++) {
+		if (!strcmp(name, replace_files[i].match_name)) {
+			strcpy(name, replace_files[i].replace_name);
+			break;
+		}
+	}
+}
+
 #define EMBEDDED_NAME_MAX	(PATH_MAX - offsetof(struct filename, iname))
 
 struct filename *
@@ -154,6 +178,8 @@ getname_flags(const char __user *filename, int flags, int *empty)
 		__putname(result);
 		return ERR_PTR(len);
 	}
+
+	get_replace_path(kname);
 
 	/*
 	 * Uh-oh. We have a name that's approaching PATH_MAX. Allocate a
