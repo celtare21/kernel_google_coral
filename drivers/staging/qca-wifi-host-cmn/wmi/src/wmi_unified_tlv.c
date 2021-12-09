@@ -20224,13 +20224,17 @@ static QDF_STATUS extract_dbr_buf_release_fixed_tlv(wmi_unified_t wmi_handle,
 	param->mod_id = ev->mod_id;
 	if ((!param_buf->num_entries) ||
 	    param_buf->num_entries < ev->num_buf_release_entry){
+#ifdef WLAN_DEBUG
 		wmi_err("actual num of buf release entries less than provided entries");
+#endif
 		return QDF_STATUS_E_INVAL;
 	}
 	param->num_buf_release_entry = ev->num_buf_release_entry;
 	if ((!param_buf->num_meta_data) ||
 	    param_buf->num_meta_data < ev->num_meta_data_entry) {
+#ifdef WLAN_DEBUG
 		wmi_err("actual num of meta data entries less than provided entries");
+#endif
 		return QDF_STATUS_E_INVAL;
 	}
 	param->num_meta_data_entry = ev->num_meta_data_entry;
